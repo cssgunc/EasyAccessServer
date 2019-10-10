@@ -14,7 +14,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
   "github.com/sirupsen/logrus"
-  "google.golang.org/api/option"
 )
 
 var log *logrus.Logger
