@@ -9,13 +9,13 @@ import (
 	"syscall"
 	"time"
 
-  firebase "firebase.google.com/go"
+  // firebase "firebase.google.com/go"
 	"github.com/BaileyFrederick/EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
   "github.com/sirupsen/logrus"
-  "google.golang.org/api/option"
-  "golang.org/x/oauth2/google"
+  // "google.golang.org/api/option"
+  // "golang.org/x/oauth2/google"
 )
 
 var log *logrus.Logger
@@ -29,50 +29,50 @@ func init() {
 }
 
 func main() {
-  ctx := context.Background()
-  ProjectID := os.Getenv("PROJECT_ID")
+  // ctx := context.Background()
+  // ProjectID := os.Getenv("PROJECT_ID")
   
-  serviceAccount := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+  // serviceAccount := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
   
-  creds, err := google.CredentialsFromJSON(ctx, []byte(serviceAccount))
-  if err != nil {
-      // TODO: handle error.
-      log.Fatalln(err)
-  }
-  println("XXX", ProjectID)
-	println("GOPATH set up correctly and project is working")
+  // creds, err := google.CredentialsFromJSON(ctx, []byte(serviceAccount))
+  // if err != nil {
+  //     // TODO: handle error.
+  //     log.Fatalln(err)
+  // }
+  // println("XXX", ProjectID)
+	// println("GOPATH set up correctly and project is working")
 	
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf, option.WithCredentials(creds))
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// conf := &firebase.Config{ProjectID: ProjectID}
+	// app, err := firebase.NewApp(ctx, conf, option.WithCredentials(creds))
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
 
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer client.Close()
+	// client, err := app.Firestore(ctx)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	// defer client.Close()
 
-	auth, err := app.Auth(ctx)
-  userRecord, err := auth.GetUserByEmail(ctx, "frederickbailey18@gmail.com")
-  if err != nil {
-    log.Fatalln(err)
-  }
+	// auth, err := app.Auth(ctx)
+  // userRecord, err := auth.GetUserByEmail(ctx, "frederickbailey18@gmail.com")
+  // if err != nil {
+  //   log.Fatalln(err)
+  // }
 
-	println(userRecord.UID)
+	// println(userRecord.UID)
 
-	//test to change info in firestore
-	p := user{
-		Name: "Our app is hosted MF",
-	}
-	//Changes the name of the specific user based on UID to ALICE
-	_, err = client.Collection("users").Doc("755O4T422rS1CgngVpI8").Set(ctx, p)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// //test to change info in firestore
+	// p := user{
+	// 	Name: "Our app is hosted MF",
+	// }
+	// //Changes the name of the specific user based on UID to ALICE
+	// _, err = client.Collection("users").Doc("755O4T422rS1CgngVpI8").Set(ctx, p)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	err = setHandler()
+	err := setHandler()
 	if err != nil {
 		log.Println(err)
 	}
