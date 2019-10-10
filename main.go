@@ -27,39 +27,39 @@ func init() {
 }
 
 func main() {
-	ProjectId := os.Getenv("ProjectID")
+	// ProjectId := os.Getenv("ProjectID")
 
-	println("GOPATH set up correctly amd project is working")
-	ctx := context.Background()
+	// println("GOPATH set up correctly amd project is working")
+	// ctx := context.Background()
 
-	conf := &firebase.Config{ProjectID: ProjectId}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// conf := &firebase.Config{ProjectID: ProjectId}
+	// app, err := firebase.NewApp(ctx, conf)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
 
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer client.Close()
+	// client, err := app.Firestore(ctx)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	// defer client.Close()
 
-	auth, err := app.Auth(ctx)
-	userRecord, err := auth.GetUserByEmail(ctx, "FrederickBailey18@gmail.com")
+	// auth, err := app.Auth(ctx)
+	// userRecord, err := auth.GetUserByEmail(ctx, "FrederickBailey18@gmail.com")
 
-	println(userRecord.UID)
+	// println(userRecord.UID)
 
-	//test to change info in firestore
-	p := User{
-		Name: "TEST",
-	}
-	//Changes the name of the specific user based on UID to ALICE
-	_, err = client.Collection("users").Doc("755O4T422rS1CgngVpI8").Set(ctx, p)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// //test to change info in firestore
+	// p := User{
+	// 	Name: "TEST",
+	// }
+	// //Changes the name of the specific user based on UID to ALICE
+	// _, err = client.Collection("users").Doc("755O4T422rS1CgngVpI8").Set(ctx, p)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	err = setHandler()
+	err := setHandler()
 	if err != nil {
 		log.Println(err)
 	}
