@@ -1,1 +1,1 @@
-web: bin/EasyAccessServer/cmd
+web: bin/EasyAccessServer
