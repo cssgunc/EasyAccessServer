@@ -37,6 +37,7 @@ func main() {
   creds, err := google.CredentialsFromJSON(ctx, []byte(serviceAccount))
   if err != nil {
       // TODO: handle error.
+      log.Fatalln(err)
   }
   println("XXX", ProjectID)
 	println("GOPATH set up correctly and project is working")
@@ -54,7 +55,10 @@ func main() {
 	defer client.Close()
 
 	auth, err := app.Auth(ctx)
-	userRecord, err := auth.GetUserByEmail(ctx, "FrederickBailey18@gmail.com")
+  userRecord, err := auth.GetUserByEmail(ctx, "frederickbailey18@gmail.com")
+  if err != nil {
+    log.Fatalln(err)
+  }
 
 	println(userRecord.UID)
 
