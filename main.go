@@ -28,14 +28,16 @@ func init() {
 }
 
 func main() {
-	ProjectID := os.Getenv("ProjectID")
-  serviceAccount := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+  ProjectID := os.Getenv("ProjectID")
+  
+  
+  serviceAccount := os.Getenv("SERVICE_ACCOUNT_ID")
   
 	println("GOPATH set up correctly amd project is working")
 	ctx := context.Background()
 
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf, option.WithCredentialsFile(serviceAccount))
+	conf := &firebase.Config{ProjectID: ProjectID, ServiceAccountID: serviceAccount}
+	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
 		log.Fatalln(err)
 	}
