@@ -24,7 +24,9 @@
 #   go-tests = true
 #   unused-packages = true
 
-
+[metadata.heroku]
+    root-package = "github.com/BaileyFrederick/EasyAccessServer"
+    install = ["./..."]
 [[constraint]]
   name = "firebase.google.com/go"
   version = "3.9.0"
