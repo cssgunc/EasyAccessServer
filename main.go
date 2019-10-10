@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	firebase "firebase.google.com/go"
 	"github.com/BaileyFrederick/EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
