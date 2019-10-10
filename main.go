@@ -14,6 +14,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
   "github.com/sirupsen/logrus"
+  "google.golang.org/api/option"
 )
 
 var log *logrus.Logger
@@ -29,14 +30,13 @@ func init() {
 func main() {
   ProjectID := os.Getenv("ProjectID")
   
-  
-  serviceAccount := os.Getenv("SERVICE_ACCOUNT_ID")
+  serviceAccount := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
   
 	println("GOPATH set up correctly amd project is working")
 	ctx := context.Background()
 
-	conf := &firebase.Config{ProjectID: ProjectID, ServiceAccountID: serviceAccount}
-	app, err := firebase.NewApp(ctx, conf)
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf, option.WithCredentials(serviceAccount))
 	if err != nil {
 		log.Fatalln(err)
 	}
