@@ -12,12 +12,12 @@ import (
 	firebase "firebase.google.com/go"
 )
 
-type Message struct {
+type message struct {
 	UID string `json:"uid"`
 }
 
 func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
-	ProjectId := os.Getenv("ProjectID")
+	ProjectID := os.Getenv("ProjectID")
 	fmt.Println("Test GET endpoint is being hit now!")
 	ctx := context.Background()
 
@@ -36,7 +36,7 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conf := &firebase.Config{ProjectID: ProjectId}
+	conf := &firebase.Config{ProjectID: ProjectID}
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
 		log.Fatalln(err)

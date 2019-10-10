@@ -1,9 +1,0 @@
-{
-	"ImportPath": "github.com/BaileyFrederick/EasyAccessServer",
-	"GoVersion": "go1.13",
-	"GodepVersion": "v80",
-	"Packages": [
-		"./..."
-	],
-	"Deps": []
-}
