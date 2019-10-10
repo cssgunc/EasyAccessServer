@@ -74,16 +74,16 @@ func setHandler() error {
 	}
 
 	println(h)
-
+  port := os.Getenv("PORT")
 	server := &http.Server{
 		Handler: h,
-		Addr:    fmt.Sprintf(":%d", 3000),
+		Addr:    fmt.Sprintf(":%d", port),
 	}
 
 	// do graceful server shutdown
 	go gracefulShutdown(server, time.Second*30)
-
-	log.Infof("listening on port %d", 3000)
+  
+	log.Infof("listening on port %d", port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return errors.Wrap(err, "cannot start a server")
 	}
