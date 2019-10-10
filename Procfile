@@ -1,1 +1,1 @@
-web: EasyAccessServer
+web: bin/EasyAccessServer
