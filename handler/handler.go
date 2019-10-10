@@ -60,7 +60,7 @@ func New(c Config) (*Handler, error) {
 
 func (h *Handler) hello(w http.ResponseWriter, r *http.Request) {
 	// Add any DB, Redis, or server pings here to have a full health check.
-	fmt.Fprintln(w, "Hello Bailey")
+	fmt.Fprintln(w, "Hello World")
 }
 
 func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
