@@ -442,6 +442,7 @@
     "github.com/joho/godotenv",
     "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
+    "golang.org/x/oauth2/google",
     "google.golang.org/api/option",
   ]
   solver-name = "gps-cdcl"

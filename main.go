@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
   "github.com/sirupsen/logrus"
   "google.golang.org/api/option"
+  "golang.org/x/oauth2/google"
 )
 
 var log *logrus.Logger
@@ -28,15 +29,18 @@ func init() {
 }
 
 func main() {
+  ctx := context.Background()
   ProjectID := os.Getenv("ProjectID")
   
   serviceAccount := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-  
+  creds, err := google.CredentialsFromJSON(ctx, []byte(serviceAccount))
+  if err != nil {
+      // TODO: handle error.
+  }
 	println("GOPATH set up correctly amd project is working")
-	ctx := context.Background()
-
+	
 	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf, option.WithCredentials(serviceAccount))
+	app, err := firebase.NewApp(ctx, conf, option.WithCredentials(creds))
 	if err != nil {
 		log.Fatalln(err)
 	}
