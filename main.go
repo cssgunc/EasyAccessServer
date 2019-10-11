@@ -64,7 +64,7 @@ func createServiceAccount() *google.Credentials{
 func main() {
   ctx := context.Background()
   ProjectID := os.Getenv("PROJECT_ID")
-  
+
 	println("GOPATH set up correctly and project is working")
 	
 	conf := &firebase.Config{ProjectID: ProjectID}
@@ -89,7 +89,7 @@ func main() {
 
 	//test to change info in firestore
 	p := user{
-		Name: "Our app is hosted MF",
+		Name: "Firebase working",
 	}
 	//Changes the name of the specific user based on UID to ALICE
 	_, err = client.Collection("users").Doc("755O4T422rS1CgngVpI8").Set(ctx, p)
