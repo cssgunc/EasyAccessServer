@@ -64,8 +64,7 @@ func createServiceAccount() *google.Credentials{
 func main() {
   ctx := context.Background()
   ProjectID := os.Getenv("PROJECT_ID")
-  // serviceAccount := createServiceAccount()
-  // opt := option.WithCredentials(serviceAccount)
+  
 	println("GOPATH set up correctly and project is working")
 	
 	conf := &firebase.Config{ProjectID: ProjectID}
