@@ -15,7 +15,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
   "github.com/sirupsen/logrus"
-  "google.golang.org/api/option"
+  // "google.golang.org/api/option"
   "golang.org/x/oauth2/google"
 )
 
