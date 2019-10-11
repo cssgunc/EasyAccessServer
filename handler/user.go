@@ -11,7 +11,6 @@ import (
 
 	firebase "firebase.google.com/go"
 	"google.golang.org/api/iterator"
-	"github.com/mitchellh/mapstructure"
 )
 
 type message struct {
@@ -99,8 +98,9 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 				return
 		}
 		fmt.Println(doc.Data())
+		bs, err := json.Marshal(doc.Data())
 		var tempCollege college
-		mapstructure.Decode(doc.Data(), &tempCollege)
+		err = json.Unmarshal(bs, &tempCollege)
 		colleges = append(colleges, tempCollege)
 	}
 	output, err := json.Marshal(colleges)
