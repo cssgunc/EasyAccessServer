@@ -10,6 +10,8 @@ import (
 	"os"
 
 	firebase "firebase.google.com/go"
+	"google.golang.org/api/iterator"
+	"github.com/mitchellh/mapstructure"
 )
 
 type message struct {
@@ -52,13 +54,56 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	// if err != nil {
 	// 	log.Fatalln(err)
 	// }
+
 	// token, err := client.VerifyIDTokenAndCheckRevoked(ctx, idToken)
 	// if err != nil {
 	// 	log.Fatalf("error verifying ID token: %v\n", err)
 	// }
 
-	// userInfo, err := client.Collection("users").Doc(token.UID).Get(ctx)
-	output, err := json.Marshal(body)
+	
+	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
+	output, err := json.Marshal(userInfo.Data())
+	if err != nil {
+		log.Println("3")
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(output)
+	return
+}
+
+func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
+	ProjectID := os.Getenv("ProjectID")
+	ctx := context.Background()
+	log.Println("College endpoint")
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer client.Close()
+	var colleges []college
+	iter := client.Collection("Colleges").Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+				break
+		}
+		if err != nil {
+				return
+		}
+		fmt.Println(doc.Data())
+		var tempCollege college
+		mapstructure.Decode(doc.Data(), &tempCollege)
+		colleges = append(colleges, tempCollege)
+	}
+	output, err := json.Marshal(colleges)
 	if err != nil {
 		log.Println("3")
 		http.Error(w, err.Error(), 500)
@@ -72,6 +117,16 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) userInfo(w http.ResponseWriter, r *http.Request) {
 	log.Println("Info Endpoint")
 
+}
+
+type college struct {
+	AcceptanceRate float64 `json:"Acceptance Rate"`
+	AverageGPA	float64 `json:"Average GPA"`
+	AverageSAT int64 `json:"Average SAT"`
+	Diversity float32 `json:"Diversity"`
+	Name string `json:"Name"`
+	Size int64 `json:"Size"`
+	Zip int64 `json:"Zip Code"`
 }
 
 type student struct {
