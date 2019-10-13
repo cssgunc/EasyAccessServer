@@ -19,9 +19,9 @@ Once your terminal says "INFO[0001] listening on port 3000" you're good
 /user - POST request.body(idToken from firebase.auth.signinwithEmailandPasword)
 	you will get back a student struct
 /colleges - GET no body
-  you will get back all colleges
+  	you will get back all colleges
 /matches - GET request.body(User UID)
-  you will get back array of colleges 
+  	you will get back array of colleges 
 ```
 
 # structs
