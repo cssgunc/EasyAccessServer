@@ -1,14 +1,6 @@
 # EasyAccessServer
 
-welcome to our EasyAccess repo!!
-
-# To start the react app
-
-run in client directory
-
-```bash
-npm start
-```
+welcome to our EasyAccessServer
 
 # To start go server
 
