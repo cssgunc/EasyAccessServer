@@ -114,9 +114,67 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (h *Handler) userInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("Info Endpoint")
+func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
+	ProjectID := os.Getenv("ProjectID")
+	ctx := context.Background()
 
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	var userUID string
+	err = json.Unmarshal(body, &userUID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer client.Close()
+
+	// auth, err := app.Auth(ctx)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+
+	// token, err := client.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	// if err != nil {
+	// 	log.Fatalf("error verifying ID token: %v\n", err)
+	// }
+
+	var user student
+	dsnap, err := client.Collection("users").Doc(userUID).Get(ctx)
+	dsnap.DataTo(&user)
+	var colleges []college
+	for _, c := range user.Matches {
+		dataSnap, err := client.Collection("Colleges").Doc(c).Get(ctx)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		bs, err := json.Marshal(dataSnap.Data())
+		var tempCollege college
+		err = json.Unmarshal(bs, &tempCollege)
+		colleges = append(colleges, tempCollege)
+	}
+	output, err := json.Marshal(colleges)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(output)
+	return
 }
 
 type college struct {
