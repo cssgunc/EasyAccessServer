@@ -11,14 +11,27 @@ import (
 
 	firebase "firebase.google.com/go"
 	"google.golang.org/api/iterator"
+	firestore "cloud.google.com/go/firestore"
 )
 
-type message struct {
-	UID string `json:"uid"`
+var app *firebase.App
+var client *firestore.Client
+func (h *Handler) setUpApp() {
+	ProjectID := os.Getenv("ProjectID")
+	ctx := context.Background()
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	client, err = app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
-	ProjectID := os.Getenv("ProjectID")
 	fmt.Println("Test GET endpoint is being hit now!")
 	ctx := context.Background()
 
@@ -37,18 +50,6 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer client.Close()
-
 	// auth, err := app.Auth(ctx)
 	// if err != nil {
 	// 	log.Fatalln(err)
@@ -61,6 +62,9 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 
 	
 	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
 		log.Println("3")
@@ -73,20 +77,10 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
-	ProjectID := os.Getenv("ProjectID")
+	// ProjectID := os.Getenv("ProjectID")
 	ctx := context.Background()
 	log.Println("College endpoint")
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
 
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer client.Close()
 	var colleges []college
 	iter := client.Collection("Colleges").Documents(ctx)
 	for {
@@ -115,7 +109,6 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
-	ProjectID := os.Getenv("ProjectID")
 	ctx := context.Background()
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -130,28 +123,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer client.Close()
-
-	// auth, err := app.Auth(ctx)
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
-
-	// token, err := client.VerifyIDTokenAndCheckRevoked(ctx, idToken)
-	// if err != nil {
-	// 	log.Fatalf("error verifying ID token: %v\n", err)
-	// }
 
 	var user student
 	dsnap, err := client.Collection("users").Doc(userUID).Get(ctx)
