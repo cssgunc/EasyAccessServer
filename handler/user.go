@@ -32,7 +32,6 @@ func (h *Handler) setUpApp() {
 }
 
 func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Test GET endpoint is being hit now!")
 	ctx := context.Background()
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -76,10 +75,10 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+
+
 func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
-	// ProjectID := os.Getenv("ProjectID")
 	ctx := context.Background()
-	log.Println("College endpoint")
 
 	var colleges []college
 	iter := client.Collection("Colleges").Documents(ctx)

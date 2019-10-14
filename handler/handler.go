@@ -53,6 +53,7 @@ func New(c Config) (*Handler, error) {
 		r.Post("/user", h.authUser)
 		r.Get("/matches", h.getMatches)
 		r.Get("/colleges", h.getColleges)
+		//r.Patch("/updateUser", h.updateUser)
 	})
 	r.Get("/health", h.health)
 	
