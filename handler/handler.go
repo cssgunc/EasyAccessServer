@@ -45,6 +45,7 @@ func New(c Config) (*Handler, error) {
 	// Middleware set up
 	r.Use(middleware.DefaultCompress)
 	r.Use(middleware.Recoverer)
+	h.setUpApp()
 
 	r.Route("/", func(r chi.Router) {
 		// set up routes
