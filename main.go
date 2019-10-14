@@ -10,7 +10,7 @@ import (
   "time"
   //"encoding/json"
 
-  // firebase "firebase.google.com/go"
+  firebase "firebase.google.com/go"
 	"EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
