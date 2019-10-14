@@ -11,7 +11,7 @@ import (
   //"encoding/json"
 
   firebase "firebase.google.com/go"
-	"github.com/BaileyFrederick/EasyAccessServer/handler"
+	"EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
   "github.com/sirupsen/logrus"
@@ -118,13 +118,13 @@ func setHandler() error {
   println(port)
 	server := &http.Server{
 		Handler: h,
-		Addr:    fmt.Sprintf(":%v", port),
+		Addr:    fmt.Sprintf(":%v", 3001),
 	}
 
 	// do graceful server shutdown
 	go gracefulShutdown(server, time.Second*30)
   
-	log.Infof("listening on port %v", port)
+	log.Infof("listening on port %v", 3001)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return errors.Wrap(err, "cannot start a server")
 	}
