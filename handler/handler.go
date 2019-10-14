@@ -50,6 +50,7 @@ func New(c Config) (*Handler, error) {
 		// set up routes
 		r.Get("/", h.hello)
 		r.Post("/user", h.authUser)
+		r.Get("/matches", h.getMatches)
 		r.Get("/colleges", h.getColleges)
 	})
 	r.Get("/health", h.health)
