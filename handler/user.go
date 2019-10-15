@@ -32,9 +32,8 @@ func (h *Handler) setUpApp() {
 }
 
 func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Test GET endpoint is being hit now!")
+	log.Println("User Endpoint")
 	ctx := context.Background()
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("1")
@@ -72,16 +71,15 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(output)
 	return
 }
 
-func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
-	// ProjectID := os.Getenv("ProjectID")
-	ctx := context.Background()
-	log.Println("College endpoint")
 
+
+func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
+	log.Println("Colleges Endpoint")
+	ctx := context.Background()
 	var colleges []college
 	iter := client.Collection("Colleges").Documents(ctx)
 	for {
@@ -105,14 +103,13 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(output)
 	return
 }
 
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
+	log.Println("Matches Endpoint")
 	ctx := context.Background()
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -146,7 +143,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(output)
 	return
 }
