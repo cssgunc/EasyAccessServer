@@ -77,7 +77,7 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 
 
 func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
-	log.Println("Colleges")
+	log.Println("Colleges Endpoint")
 	ctx := context.Background()
 	var colleges []college
 	iter := client.Collection("Colleges").Documents(ctx)
