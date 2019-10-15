@@ -58,6 +58,14 @@
   version = "v4.0.2"
 
 [[projects]]
+  digest = "1:dfa416a1bb8139f30832543340f972f65c0db9932034cb6a1b42c5ac615a3fb8"
+  name = "github.com/go-chi/cors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "dba6525398619dead495962a916728e7ee2ca322"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:54d7b4b9ab2bb2bae35b55eea900bc8fe15cba05a95fc78bf7fd7b82a9a07afa"
   name = "github.com/go-chi/render"
   packages = ["."]
@@ -131,14 +139,6 @@
   pruneopts = "UT"
   revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
   version = "v1.0.2"
-
-[[projects]]
-  digest = "1:53bc4cd4914cd7cd52139990d5170d6dc99067ae31c56530621b18b35fc30318"
-  name = "github.com/mitchellh/mapstructure"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
-  version = "v1.1.2"
 
 [[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
@@ -443,12 +443,13 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "cloud.google.com/go/firestore",
     "firebase.google.com/go",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
+    "github.com/go-chi/cors",
     "github.com/go-chi/render",
     "github.com/joho/godotenv",
-    "github.com/mitchellh/mapstructure",
     "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
     "google.golang.org/api/iterator",

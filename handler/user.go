@@ -33,7 +33,6 @@ func (h *Handler) setUpApp() {
 
 func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("1")
@@ -71,7 +70,6 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(output)
 	return
 }
@@ -79,8 +77,8 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 
 
 func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
+	log.Println("Colleges")
 	ctx := context.Background()
-
 	var colleges []college
 	iter := client.Collection("Colleges").Documents(ctx)
 	for {
@@ -104,29 +102,27 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(output)
 	return
 }
 
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
+	// body, err := ioutil.ReadAll(r.Body)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
 
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	var userUID string
-	err = json.Unmarshal(body, &userUID)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
+	// var userUID string
+	// err = json.Unmarshal(body, &userUID)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
 
 	var user student
-	dsnap, err := client.Collection("users").Doc(userUID).Get(ctx)
+	dsnap, err := client.Collection("users").Doc("xLwd4c1WjKaxG3Vf3GDVMXMTLFE3").Get(ctx)
 	dsnap.DataTo(&user)
 	var colleges []college
 	for _, c := range user.Matches {
@@ -145,7 +141,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(output)
 	return
 }
