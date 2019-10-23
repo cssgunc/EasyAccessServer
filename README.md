@@ -25,20 +25,20 @@ Once your terminal says "INFO[0001] listening on port 3000" you're good
 /updateUser - PATCH request
 	Body = 
 	{
-	"uid":"xLwd4c1WjKaxG3Vf3GDVMXMTLFE3",
-	"info": [{
-		"Path":"Name",
-		"Value":"Bailey"
-	},
-	{
-		"Path":"SAT",
-		"Value":"2400"
-	},
-	{
-		"Path":"ACT",
-		"Value":"35"
-	}]
-}
+		"uid":"xLwd4c1WjKaxG3Vf3GDVMXMTLFE3",
+		"info": [{
+			"Path":"Name",
+			"Value":"Bailey"
+		},
+		{
+			"Path":"SAT",
+			"Value":"2400"
+		},
+		{
+			"Path":"ACT",
+			"Value":"35"
+		}]
+	}
 		   
 ```
 
