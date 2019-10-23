@@ -41,6 +41,7 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//change this to firestore token not string
 	var idToken string
 	err = json.Unmarshal(body, &idToken)
 	if err != nil {
@@ -49,15 +50,17 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// auth, err := app.Auth(ctx)
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
+	auth, err := app.Auth(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	// token, err := client.VerifyIDTokenAndCheckRevoked(ctx, idToken)
-	// if err != nil {
-	// 	log.Fatalf("error verifying ID token: %v\n", err)
-	// }
+	token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	if err != nil {
+		log.Fatalf("error verifying ID token: %v\n", err)
+	}
+	//fix this
+	log.Println(token)
 
 	
 	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
@@ -73,6 +76,38 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.Write(output)
 	return
+}
+type updateInfo struct {
+	UID string `json:"uid"`
+	Info []firestore.Update `json:"info"`
+}
+
+func(h *Handler) updateUser(w http.ResponseWriter, r *http.Request){
+	log.Println("Update User")
+	ctx := context.Background()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println("1")
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	var newInfo *updateInfo
+	err = json.Unmarshal(body, &newInfo)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	log.Println(newInfo.Info)
+
+	userRef := client.Collection("users").Doc(newInfo.UID)
+	temp, err := userRef.Update(ctx,newInfo.Info)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(temp)
+
 }
 
 
