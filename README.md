@@ -22,6 +22,24 @@ Once your terminal says "INFO[0001] listening on port 3000" you're good
   	you will get back all colleges
 /matches - GET request.body(User UID)
   	you will get back array of colleges 
+/updateUser - PATCH request
+	Body = 
+	{
+	"uid":"xLwd4c1WjKaxG3Vf3GDVMXMTLFE3",
+	"info": [{
+		"Path":"Name",
+		"Value":"Bailey"
+	},
+	{
+		"Path":"SAT",
+		"Value":"2400"
+	},
+	{
+		"Path":"ACT",
+		"Value":"35"
+	}]
+}
+		   
 ```
 
 # structs
