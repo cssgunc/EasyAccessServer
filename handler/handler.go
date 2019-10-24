@@ -3,6 +3,9 @@ package handler
 import (
 	"net/http"
 	"fmt"
+	"context"
+	"log"
+	"os"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -10,6 +13,9 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
+	firebase "firebase.google.com/go"
+	firestore "cloud.google.com/go/firestore"
 )
 
 // Config is the config for the handler.
@@ -29,6 +35,23 @@ func isValidConfig(c Config) error {
 		return errors.New("logger cannot be nil")
 	}
 	return nil
+}
+
+var app *firebase.App
+var client *firestore.Client
+func (h *Handler) setUpApp() {
+	ProjectID := os.Getenv("ProjectID")
+	ctx := context.Background()
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	client, err = app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 // New returns a new handler.

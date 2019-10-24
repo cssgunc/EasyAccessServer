@@ -7,36 +7,33 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 
-	firebase "firebase.google.com/go"
 	"google.golang.org/api/iterator"
 	firestore "cloud.google.com/go/firestore"
 )
 
-var app *firebase.App
-var client *firestore.Client
-func (h *Handler) setUpApp() {
-	ProjectID := os.Getenv("ProjectID")
-	ctx := context.Background()
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
+// var app *firebase.App
+// var client *firestore.Client
+// func (h *Handler) setUpApp() {
+// 	ProjectID := os.Getenv("ProjectID")
+// 	ctx := context.Background()
+// 	conf := &firebase.Config{ProjectID: ProjectID}
+// 	app, err := firebase.NewApp(ctx, conf)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
 
-	client, err = app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
+// 	client, err = app.Firestore(ctx)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// }
 
 func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("User Endpoint")
 	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("1")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -45,11 +42,10 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	var idToken string
 	err = json.Unmarshal(body, &idToken)
 	if err != nil {
-		log.Println("2")
 		http.Error(w, err.Error(), 500)
 		return
 	}
-
+	
 	auth, err := app.Auth(ctx)
 	if err != nil {
 		log.Fatalln(err)
@@ -69,7 +65,6 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	}
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
-		log.Println("3")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -87,7 +82,6 @@ func(h *Handler) updateUser(w http.ResponseWriter, r *http.Request){
 	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("1")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -133,7 +127,6 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 	}
 	output, err := json.Marshal(colleges)
 	if err != nil {
-		log.Println("3")
 		http.Error(w, err.Error(), 500)
 		return
 	}
