@@ -90,4 +90,11 @@ Region ID
 7	Rocky Mountains (CO, ID, MT, UT, WY)
 8	Far West (AK, CA, HI, NV, OR, WA)
 9	Outlying Areas (AS, FM, GU, MH, MP, PR, PW, VI)
+
+Type of Degree
+0	Non-degree-granting
+1	Certificate degree
+2	Associate degree
+3	Bachelor's degree
+4	Graduate degree
 ```
