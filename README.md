@@ -20,6 +20,8 @@ Once your terminal says "INFO[0001] listening on port 3000" you're good
 	you will get back a student struct
 /colleges - GET no body
   	you will get back all colleges
+/majors - GET no body
+	get back an array of strings
 /matches - GET request.body(User UID)
   	you will get back array of colleges 
 /updateUser - PATCH request
