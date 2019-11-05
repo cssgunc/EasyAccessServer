@@ -1,15 +1,20 @@
 package handler
 
 import (
+	"context"
+	"log"
 	"net/http"
-	"fmt"
+	"os"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/go-chi/render"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
+	firestore "cloud.google.com/go/firestore"
+	firebase "firebase.google.com/go"
 )
 
 // Config is the config for the handler.
@@ -31,6 +36,24 @@ func isValidConfig(c Config) error {
 	return nil
 }
 
+var app *firebase.App
+var client *firestore.Client
+
+func (h *Handler) setUpApp() {
+	ProjectID := os.Getenv("ProjectID")
+	ctx := context.Background()
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	client, err = app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
 // New returns a new handler.
 func New(c Config) (*Handler, error) {
 	if err := isValidConfig(c); err != nil {
@@ -49,7 +72,7 @@ func New(c Config) (*Handler, error) {
 
 	cors := cors.New(cors.Options{
 		// AllowedOrigins: []string{"https://foo.com"}, // Use this to allow specific origin hosts
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins: []string{"*"},
 		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
@@ -62,22 +85,17 @@ func New(c Config) (*Handler, error) {
 	h.setUpApp()
 	r.Route("/", func(r chi.Router) {
 		// set up routes
-		r.Get("/", h.hello)
-		r.Post("/user", h.authUser)
-		r.Get("/matches", h.getMatches)
-		r.Get("/colleges", h.getColleges)
+		r.Post("/user", h.AuthUser)
+		r.Get("/matches", h.GetMatches)
+		r.Get("/colleges", h.GetColleges)
 		r.Patch("/updateUser", h.updateUser)
+		r.Post("/collegeMatches", h.queryColleges)
+		r.Get("/majors", h.collegeMajors)
 	})
 	r.Get("/health", h.health)
-	
 
 	h.Handler = r
 	return &h, nil
-}
-
-func (h *Handler) hello(w http.ResponseWriter, r *http.Request) {
-	// Add any DB, Redis, or server pings here to have a full health check.
-	fmt.Fprintln(w, "Hello World!")
 }
 
 func (h *Handler) health(w http.ResponseWriter, r *http.Request) {

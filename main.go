@@ -7,12 +7,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-  	"time"
-  
+	"time"
+
 	"github.com/BaileyFrederick/EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
-  	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 var log *logrus.Logger
@@ -35,8 +35,8 @@ func main() {
 }
 
 func setHandler() error {
-  // set up our global handler
-  log.Println("setHandler")
+	// set up our global handler
+	log.Println("setHandler")
 	h, err := handler.New(handler.Config{
 		Logger: log,
 	})
@@ -45,8 +45,8 @@ func setHandler() error {
 	}
 
 	println(h)
-  port := os.Getenv("PORT")
-  println(port)
+	port := os.Getenv("PORT")
+	println(port)
 	server := &http.Server{
 		Handler: h,
 		Addr:    fmt.Sprintf(":%v", 3001),
@@ -54,7 +54,7 @@ func setHandler() error {
 
 	// do graceful server shutdown
 	go gracefulShutdown(server, time.Second*30)
-  
+
 	log.Infof("listening on port %v", 3001)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return errors.Wrap(err, "cannot start a server")

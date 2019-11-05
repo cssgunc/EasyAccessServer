@@ -7,36 +7,19 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 
-	firebase "firebase.google.com/go"
-	"google.golang.org/api/iterator"
 	firestore "cloud.google.com/go/firestore"
+	"google.golang.org/api/iterator"
 )
 
-var app *firebase.App
-var client *firestore.Client
-func (h *Handler) setUpApp() {
-	ProjectID := os.Getenv("ProjectID")
-	ctx := context.Background()
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
+var UUID string
 
-	client, err = app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-
-func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
+//AuthUser is
+func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("User Endpoint")
 	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("1")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -45,31 +28,29 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	var idToken string
 	err = json.Unmarshal(body, &idToken)
 	if err != nil {
-		log.Println("2")
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	UUID = idToken
 
-	auth, err := app.Auth(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// auth, err := app.Auth(ctx)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
 
-	token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
-	if err != nil {
-		log.Fatalf("error verifying ID token: %v\n", err)
-	}
+	// token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	// if err != nil {
+	// 	log.Fatalf("error verifying ID token: %v\n", err)
+	// }
 	//fix this
-	log.Println(token)
 
-	
-	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
+	userInfo, err := client.Collection("users").Doc(UUID).Get(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		http.Error(w, err.Error(), 404)
+		return
 	}
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
-		log.Println("3")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -77,17 +58,17 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(output)
 	return
 }
+
 type updateInfo struct {
-	UID string `json:"uid"`
+	UID  string             `json:"uid"`
 	Info []firestore.Update `json:"info"`
 }
 
-func(h *Handler) updateUser(w http.ResponseWriter, r *http.Request){
+func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("Update User")
 	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("1")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -102,17 +83,17 @@ func(h *Handler) updateUser(w http.ResponseWriter, r *http.Request){
 	log.Println(newInfo.Info)
 
 	userRef := client.Collection("users").Doc(newInfo.UID)
-	temp, err := userRef.Update(ctx,newInfo.Info)
+	temp, err := userRef.Update(ctx, newInfo.Info)
 	if err != nil {
-		log.Fatalln(err)
+		http.Error(w, err.Error(), 404)
+		return
 	}
 	log.Println(temp)
 
 }
 
-
-
-func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
+//GetColleges blah
+func (h *Handler) GetColleges(w http.ResponseWriter, r *http.Request) {
 	log.Println("Colleges Endpoint")
 	ctx := context.Background()
 	var colleges []college
@@ -120,10 +101,10 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
-				break
+			break
 		}
 		if err != nil {
-				return
+			return
 		}
 		fmt.Println(doc.Data())
 		bs, err := json.Marshal(doc.Data())
@@ -133,7 +114,6 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 	}
 	output, err := json.Marshal(colleges)
 	if err != nil {
-		log.Println("3")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -142,7 +122,8 @@ func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
+//GetMatches blah
+func (h *Handler) GetMatches(w http.ResponseWriter, r *http.Request) {
 	log.Println("Matches Endpoint")
 	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
@@ -160,6 +141,10 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 
 	var user student
 	dsnap, err := client.Collection("users").Doc(userUID).Get(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
 	dsnap.DataTo(&user)
 	var colleges []college
 	for _, c := range user.Matches {
@@ -184,12 +169,12 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 
 type college struct {
 	AcceptanceRate float64 `json:"Acceptance Rate"`
-	AverageGPA	float64 `json:"Average GPA"`
-	AverageSAT int64 `json:"Average SAT"`
-	Diversity float32 `json:"Diversity"`
-	Name string `json:"Name"`
-	Size int64 `json:"Size"`
-	Zip int64 `json:"Zip Code"`
+	AverageGPA     float64 `json:"Average GPA"`
+	AverageSAT     int64   `json:"Average SAT"`
+	Diversity      float32 `json:"Diversity"`
+	Name           string  `json:"Name"`
+	Size           int64   `json:"Size"`
+	Zip            int64   `json:"Zip Code"`
 }
 
 type student struct {
