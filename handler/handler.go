@@ -91,6 +91,8 @@ func New(c Config) (*Handler, error) {
 		r.Patch("/updateUser", h.updateUser)
 		r.Post("/collegeMatches", h.queryColleges)
 		r.Get("/majors", h.collegeMajors)
+		r.Get("/score", h.scoreStudent)
+		r.Get("/update", h.updateSelectivityScores)
 	})
 	r.Get("/health", h.health)
 
