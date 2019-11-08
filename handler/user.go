@@ -7,12 +7,59 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	firestore "cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
+//UUID set when AuthUser is called
 var UUID string
+
+func (h *Handler) scoreStudent(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	userInfo, err := client.Collection("users").Doc("xLwd4c1WjKaxG3Vf3GDVMXMTLFE3").Get(ctx)
+	if err != nil {
+		// http.Error(err.Error(), 404)
+	}
+
+	var student student
+	userInfo.DataTo(&student)
+	var potentialScores []string
+	iter := client.Collection("Selectivity").Where("LowGPA", "<=", student.UnweightedGPA).Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatalln(err)
+		}
+		var s selectivity
+		doc.DataTo(&s)
+		if s.HighACT != 0 {
+			if s.LowACT <= student.ACT && student.ACT <= s.HighACT && s.LowGPA <= float64(student.UnweightedGPA) && float64(student.UnweightedGPA) <= s.HighGPA {
+				potentialScores = append(potentialScores, s.Score)
+			}
+		} else {
+			if s.LowSAT <= student.SAT && student.SAT <= s.HighSAT && s.LowGPA <= float64(student.UnweightedGPA) && float64(student.UnweightedGPA) <= s.HighGPA {
+				potentialScores = append(potentialScores, s.Score)
+			}
+		}
+	}
+	topScore := 0
+	log.Println(potentialScores)
+	for _, score := range potentialScores {
+		i, err := strconv.Atoi(score[len(score)-1:])
+		if err != nil {
+			log.Fatalln(err)
+		}
+		if i > topScore {
+			topScore = i
+		}
+	}
+	log.Println(topScore)
+}
 
 //AuthUser is
 func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +112,6 @@ type updateInfo struct {
 }
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
-	log.Println("Update User")
 	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -80,15 +126,16 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(newInfo.Info)
-
 	userRef := client.Collection("users").Doc(newInfo.UID)
-	temp, err := userRef.Update(ctx, newInfo.Info)
+	_, err = userRef.Update(ctx, newInfo.Info)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
 	}
-	log.Println(temp)
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return
 
 }
 
@@ -179,7 +226,8 @@ type college struct {
 
 type student struct {
 	UID            string   `json:"uid"`
-	Name           string   `json:"name"`
+	FirstName      string   `json:"firstname"`
+	LastName       string   `json:"lastname"`
 	Email          string   `json:"email"`
 	SchoolCode     string   `json:"schoolCode"`
 	GraduationYear string   `json:"graduationYear"`

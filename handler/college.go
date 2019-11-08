@@ -20,23 +20,14 @@ import (
 	// firestore "cloud.google.com/go/firestore"
 )
 
-func (h *Handler) scoreStudent() {
-	ctx := context.Background()
-	userInfo, err := client.Collection("users").Doc(UUID).Get(ctx)
-	if err != nil {
-		// http.Error(err.Error(), 404)
-	}
-	// selectivityInfo, err := client.Collection("info").Doc("Selectivity").Get(ctx)
-	// if err != nil {
-	// 	//handle
-	// }
-	var student student
-	userInfo.DataTo(&student)
-	if student.SAT > student.ACT {
-		//use Sat and GPA
-	} else {
-		// use ACT and GPA
-	}
+type selectivity struct {
+	Score   string
+	LowACT  int
+	HighACT int
+	LowGPA  float64
+	HighGPA float64
+	LowSAT  int
+	HighSAT int
 }
 
 func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +94,7 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	// //change this to firestore token not string
+	//
 	// var colleges majorResponse
 	// err = json.Unmarshal(resBody, &colleges)
 	// if err != nil {
@@ -124,7 +115,6 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) queryColleges(w http.ResponseWriter, r *http.Request) {
-	log.Println("Hit")
 	ctx := context.Background()
 	log.Println(ctx)
 	body, err := ioutil.ReadAll(r.Body)
@@ -154,6 +144,9 @@ func (h *Handler) queryColleges(w http.ResponseWriter, r *http.Request) {
 	params.Add("school.degrees_awarded.highest__range", string(queryParams.DegreeType)+"..")
 	params.Add("fields", "school.name,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall")
 	params.Add("per_page", "100")
+	// params.Add("latest.admissions.act_scores.midpoint.cumulative__range", "25..")
+	// params.Add("latest.admissions.admission_rate.overall__range", "..0.3")
+	// params.Add("latest.admissions.sat_scores.average.overall__range", "1200..")
 
 	// Add Query Parameters to the URL
 	baseURL.RawQuery = params.Encode() // Escape Query Parameters
