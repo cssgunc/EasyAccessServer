@@ -35,6 +35,17 @@ go run main.go
 
 Once your terminal says "INFO[0001] listening on port 3001" you're good
 
+# Testing
+
+Within the handler package you will find file names ending with `_test.go`
+
+Once in those files, at the very top there is a button to `run package tests | run file tests`
+
+Package tests will run all of the unit tests within handler and file test will only run the unit test within that file
+
+You can also run individual unit test by clicking `run test` right above each function.
+
+Or you can run `go test -v` in the terminal to run all tests `-v` gives log output.
 
 # Http Requests
 ```bash
