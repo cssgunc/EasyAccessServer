@@ -6,10 +6,15 @@ Easy Access is a simple and easy to use, all-in-one app for college applicants a
 # Getting Started
 
 Download Golang ```bash brew install go```
+
 Create a folder named "go" in your home directory
+
 Edit your ```bash ~/.bash_profile``` to add the following line:
+
 	```bash export GOPATH=$HOME/go```
+	
 Save and exit, then run
+
 	```bash source ~/.bash_profile```
 
 
