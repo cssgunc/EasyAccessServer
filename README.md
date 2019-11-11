@@ -5,29 +5,35 @@ Easy Access is a simple and easy to use, all-in-one app for college applicants a
 
 # Getting Started
 
-Download Golang ```bash brew install go```
+Download and set up golang/GOPATH
 
-Create a folder named "go" in your home directory
+Here is a good step by step example
 
-Edit your ```bash ~/.bash_profile``` to add the following line:
-
-	```bash export GOPATH=$HOME/go```
+https://www.callicoder.com/golang-installation-setup-gopath-workspace/ 
 	
-Save and exit, then run
+Now clone repo into go/src/github.com/YOURUSERNAME
+	
+EasyAccess uses dep to manage dependencies.
 
-	```bash source ~/.bash_profile```
+# To start go server locally
 
+First you will need access to the Firebase EasyAccessServer Console.
 
-# To start go server
+Go to Project Settings -> Service Accounts and Click "Generate New Private Key"
 
-run in server/src/cmd directory
+This will save a key file to your local machine. MAKE SURE TO REMEMBER WHERE THIS IS SAVED AND WHAT IT'S NAME IT.
+
+Inside of the top level of the project create a .env file
+
+Add `export GOOGLE_APPLICATION_CREDENTIALS="PATH TO YOUR PRIVATE KEY"`, `PORT="3001"`, and `SCORECARDAPIKEY="Insert Secret Key"`
+
+Now you can run the following to start up a local server
 
 ```bash
-cd server/src/cmd
 go run main.go
 ```
 
-Once your terminal says "INFO[0001] listening on port 3000" you're good
+Once your terminal says "INFO[0001] listening on port 3001" you're good
 
 
 # Http Requests
