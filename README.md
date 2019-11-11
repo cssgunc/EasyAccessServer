@@ -1,6 +1,17 @@
 # EasyAccessServer
 
-welcome to our EasyAccessServer
+Welcome to our EasyAccessServer!
+Easy Access is a simple and easy to use, all-in-one app for college applicants and high school counselors to find the perfect college for each student and guide them through the process, thus promoting equity in higher education.  Personalized to each student’s criteria for their future and includes integrated education tips, matching software, connection to college applications and admissions staff, and data collection.
+
+# Getting Started
+
+Download Golang ```bash brew install go```
+Create a folder named "go" in your home directory
+Edit your ```bash ~/.bash_profile``` to add the following line:
+	```bash export GOPATH=$HOME/go```
+Save and exit, then run
+	```bash source ~/.bash_profile```
+
 
 # To start go server
 
