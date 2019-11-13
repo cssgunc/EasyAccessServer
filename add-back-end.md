@@ -1,23 +1,23 @@
-# React Native ADR
+# Backend ADR
 
 ## Summary
 
 
 ### Issue
 
-We need to choose a front-end programming language suitable for mobile applications that works well with a backend language like Go.  
+We need to choose a back-end programming language that will allow us to transfer data between react-native and firebase
 
-Also a language and library that leads to an interactive UI that is inviting and loads quickly.
+We need a database to store information that is third-party managed to decrease issues after we are finished with project
 
+We need a service to host the server on
 
 ### Decision
 
-We are choosing ReactNative JS library for the front-end.
+We are choosing Golang for the back-end
 
+We choose Firebase for the database because it has an admin sdk for go, is easily scalable, and has built in authentification.
 
-### Status
-
-Decided. We are open to new alternatives as they arise.
+We are using heroku to host our API.
 
 
 ## Details
@@ -25,17 +25,21 @@ Decided. We are open to new alternatives as they arise.
 
 ### Assumptions
 
-The front-end applications are typical:
+Golang
 
-  * Typical users and interactions
+  * API endpoints
+  
+  * Easy unit testing
 
-  * Typical browsers and systems
+Firebase
 
-  * Typical developments and deployments
+  * Allows for Multiple types of Auth
 
-The front-end applications is likely to evolve quickly:
+  * Allows our client to view data and users without having to query a database through firebase console
 
-  * We want to ensure fast easy developments, deployments, iterations, etc.
+We want to allow for easy updates and fixes to code.
+
+  * Heroku allows for fast easy developments, deployments, iterations, etc.
 
 ### Constraints
 
@@ -45,27 +49,29 @@ We also need something that can be easily transferred when we hand the project o
 
 ### Positions
 
-We considered these libraries of JS:
+We considered the following:
 
-  * React
+  * Go
   
-  * ReactNative
-  
-  * Angular
+  * Closure
 
 
 ### Argument
 
 Summary per language:
 
-  * ReactNative: plenty of freedom, uses a virtual DOM, uses JSX so everything is in one place, only requires JavaScript knowledge and 
-  uses a native UI that is fast. Cons are that you have to take care of updates and migrations from other libraries, only one way binding.
+  * Go: Pros of Go are that is is a general purpose language, open source with lots of documentation, helps with concurrency, statically-typed, and a lower learning curve. Cons of Go the package manager had major problems but has gone under major repairs recently. Prior experience 
   
-  * Angular: stable, has two way binding so both UI element and model state change. Cons are that it has less flexibility, 
-  requires developer to learn its own syntax and just a web app that can be slow.
+  * Colsure: Pros of clojure are great program management, general programing, vast amount of packages. Cons of Clojure are there are not as many learning resources available as Go, Difficult syntax, and not a great support community.
 
 ### Implications
 
-Front-end developers will need to learn ReactNative. This is likely an easy learning curve if the developer's primary experience is using JavaScript.  Both frontend developers on this project have internship experience with React, so transitioning to ReactNative should not be too different.
+Backend developer has to learn...
+
+   * How to connect firebase to go through firebase admin sdk
+   
+   * How to host API on heroku
+   
+   * How to securely transfer data
 
 
