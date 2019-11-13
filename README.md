@@ -47,6 +47,18 @@ You can also run individual unit test by clicking `run test` right above each fu
 
 Or you can run `go test -v` in the terminal to run all tests `-v` gives log output.
 
+# Deployment
+
+Heroku: No addons. Set up through git. Git push heroku master will publish master branch to production.
+	
+	Make sure dynos are upgraded. heroku ps: web=1 will start one dyno. 0=no dynos on, 
+
+Firebase: Firestore live at all times. Make sure it is upgraded to one of the following plans when in production
+
+	Flame Plan: Fixed rate
+
+	Blaze Plan: Pay for what you use 
+
 # Http Requests
 ```bash
 /user - POST request.body(idToken from firebase.auth.signinwithEmailandPasword)
