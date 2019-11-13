@@ -61,6 +61,8 @@ Firebase: Firestore live at all times. Make sure it is upgraded to one of the fo
 	
 # Architecture
 
+ See adr-back-end.md file
+
 # Contributing
 
 A developer will need access to...
