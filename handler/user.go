@@ -16,7 +16,7 @@ import (
 //UUID set when AuthUser is called
 var UUID string
 
-func (h *Handler) scoreStudent(w http.ResponseWriter, r *http.Request) {
+func scoreStudent() int {
 	ctx := context.Background()
 	userInfo, err := client.Collection("users").Doc("xLwd4c1WjKaxG3Vf3GDVMXMTLFE3").Get(ctx)
 	if err != nil {
@@ -48,7 +48,6 @@ func (h *Handler) scoreStudent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	topScore := 0
-	log.Println(potentialScores)
 	for _, score := range potentialScores {
 		i, err := strconv.Atoi(score[len(score)-1:])
 		if err != nil {
@@ -59,6 +58,7 @@ func (h *Handler) scoreStudent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	log.Println(topScore)
+	return topScore
 }
 
 //AuthUser is
@@ -169,8 +169,8 @@ func (h *Handler) GetColleges(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-//GetMatches blah
-func (h *Handler) GetMatches(w http.ResponseWriter, r *http.Request) {
+//GetMatch blah
+func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
 	log.Println("Matches Endpoint")
 	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
