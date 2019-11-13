@@ -58,6 +58,29 @@ Firebase: Firestore live at all times. Make sure it is upgraded to one of the fo
 	Flame Plan: Fixed rate
 
 	Blaze Plan: Pay for what you use 
+	
+# Architecture
+
+# Contributing
+
+A developer will need access to...
+	Github repos
+		1. EasyAccessServer
+		2. EasyAccessReactNative
+	Heroku - easy-access-server
+	Firebase - easyaccess-9ffaa
+	
+# Authors
+	Bailey Frederick
+	Ashley Smith
+	Zach Glontz
+	
+# Acknowledgements
+
+	Rocky Moon
+	Vitaly Radsky
+	Dennis Brown
+	
 
 # Http Requests
 ```bash
