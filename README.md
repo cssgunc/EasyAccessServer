@@ -64,14 +64,23 @@ Firebase: Firestore live at all times. Make sure it is upgraded to one of the fo
 # Contributing
 
 A developer will need access to...
+
 	Github repos
+	
 		1. EasyAccessServer
+		
 		2. EasyAccessReactNative
+		
 	Heroku - easy-access-server
+	
 	Firebase - easyaccess-9ffaa
+	
 		firestore
+		
 		Authentication
+		
 		service account
+		
 	College Score Card API key - heroku -> settings -> reveal config vars - SCORECARDAPIKEY
 	
 # Authors
