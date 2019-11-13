@@ -69,6 +69,10 @@ A developer will need access to...
 		2. EasyAccessReactNative
 	Heroku - easy-access-server
 	Firebase - easyaccess-9ffaa
+		firestore
+		Authentication
+		service account
+	College Score Card API key - heroku -> settings -> reveal config vars - SCORECARDAPIKEY
 	
 # Authors
 	Bailey Frederick
@@ -76,7 +80,6 @@ A developer will need access to...
 	Zach Glontz
 	
 # Acknowledgements
-
 	Rocky Moon
 	Vitaly Radsky
 	Dennis Brown
