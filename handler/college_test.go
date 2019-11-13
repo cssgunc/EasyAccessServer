@@ -32,7 +32,7 @@ func Router() *chi.Mux {
 	r.Route("/", func(r chi.Router) {
 		// set up routes
 		r.Post("/user", h.AuthUser)
-		r.Get("/matches", h.GetMatches)
+		r.Get("/matches", h.GetMatch)
 		r.Get("/colleges", h.GetColleges)
 		r.Patch("/updateUser", h.updateUser)
 	})

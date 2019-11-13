@@ -86,12 +86,11 @@ func New(c Config) (*Handler, error) {
 	r.Route("/", func(r chi.Router) {
 		// set up routes
 		r.Post("/user", h.AuthUser)
-		r.Get("/matches", h.GetMatches)
+		r.Get("/matches", h.GetMatch)
 		r.Get("/colleges", h.GetColleges)
 		r.Patch("/updateUser", h.updateUser)
-		r.Post("/collegeMatches", h.queryColleges)
+		r.Post("/collegeMatches", h.getMatches)
 		r.Get("/majors", h.collegeMajors)
-		r.Get("/score", h.scoreStudent)
 		r.Get("/update", h.updateSelectivityScores)
 	})
 	r.Get("/health", h.health)

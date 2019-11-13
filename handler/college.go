@@ -114,7 +114,113 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 	// return
 }
 
-func (h *Handler) queryColleges(w http.ResponseWriter, r *http.Request) {
+func getCollegeRanges(score int) ([]CollegeSelectivityInfo, error) {
+	ctx := context.Background()
+	targetScore := strconv.Itoa(score)
+	targetInfo, err := client.Collection("Selectivity").Doc(targetScore).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	reachScore := strconv.Itoa(score + 1)
+	log.Println("ReachScore: ", reachScore)
+	reachInfo, err := client.Collection("Selectivity").Doc(reachScore).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var target CollegeSelectivityInfo
+	var reach CollegeSelectivityInfo
+	var safety CollegeSelectivityInfo
+	if score != 1 {
+		safetyScore := strconv.Itoa(score - 1)
+		safetyInfo, err := client.Collection("Selectivity").Doc(safetyScore).Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+		safetyInfo.DataTo(&safety)
+	}
+
+	targetInfo.DataTo(&target)
+	reachInfo.DataTo(&reach)
+
+	info := []CollegeSelectivityInfo{safety, target, reach}
+
+	return info, nil
+}
+
+func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeParams) ([]Result, error) {
+
+	baseURL, err := url.Parse("https://api.data.gov/ed/collegescorecard/v1/schools?")
+	if err != nil {
+		return nil, err
+	}
+
+	//sets ranges of possible scores to limit query
+	lowAct := strconv.Itoa(selectivityInfo.ACT[0])
+	highAct := strconv.Itoa(selectivityInfo.ACT[1])
+	lowSat := strconv.Itoa(selectivityInfo.SAT[0])
+	highSat := strconv.Itoa(selectivityInfo.SAT[1])
+	rate := strconv.Itoa(selectivityInfo.Rate)
+
+	// Prepare Query Parameters
+	params := url.Values{}
+	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
+	params.Add("school.region_id", queryParams.Region)
+	params.Add("school.degrees_awarded.highest__range", "3..")
+	params.Add("fields", "school.name,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall")
+	params.Add("per_page", "100")
+	params.Add("latest.admissions.act_scores.midpoint.cumulative__range", lowAct+".."+highAct)
+	params.Add("latest.admissions.admission_rate.overall__range", ".."+rate)
+	params.Add("latest.admissions.sat_scores.average.overall__range", lowSat+".."+highSat)
+
+	// Add Query Parameters to the URL
+	baseURL.RawQuery = params.Encode() // Escape Query Parameters
+	log.Printf("Encoded URL is %q\n", baseURL.String())
+	response, err := http.Get(baseURL.String())
+	if err != nil {
+		return nil, err
+	}
+
+	resBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var colleges ScoreCardResponse
+	err = json.Unmarshal(resBody, &colleges)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("total: ", colleges.Metadata.Total)
+	log.Println("page: ", colleges.Metadata.Page)
+
+	totalPages := math.Ceil(float64(colleges.Metadata.Total) / float64(colleges.Metadata.PerPage))
+	log.Println("totalPages: ", totalPages)
+	for i := 1; i < int(totalPages); i++ {
+		a := strconv.Itoa(i)
+		params.Add("page", ""+a)
+		baseURL.RawQuery = params.Encode()
+		response, err := http.Get(baseURL.String())
+		if err != nil {
+			return nil, err
+		}
+
+		resBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var tempColleges ScoreCardResponse
+		err = json.Unmarshal(resBody, &tempColleges)
+		if err != nil {
+			return nil, err
+		}
+		colleges.Results = append(colleges.Results, tempColleges.Results...)
+	}
+
+	return colleges.Results, nil
+}
+
+func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	log.Println(ctx)
 	body, err := ioutil.ReadAll(r.Body)
@@ -130,89 +236,61 @@ func (h *Handler) queryColleges(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	baseURL, err := url.Parse("https://api.data.gov/ed/collegescorecard/v1/schools?")
+
+	//scores the student from 1-5
+	score := scoreStudent()
+
+	selectivityInfo, err := getCollegeRanges(score)
 	if err != nil {
-		fmt.Println("Malformed URL: ", err.Error())
+		fmt.Println("bad SelectivityInfo ", err)
 		return
 	}
+	var safety []Result
+	if selectivityInfo[0].Rate != 0 {
+		log.Println("Safety")
+		safety, err = queryColleges(&selectivityInfo[0], queryParams)
+	}
+	log.Println("Target")
+	target, err := queryColleges(&selectivityInfo[1], queryParams)
+	log.Println("Reach")
+	reach, err := queryColleges(&selectivityInfo[2], queryParams)
 
-	log.Println(string(queryParams.DegreeType))
-	// Prepare Query Parameters
-	params := url.Values{}
-	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
-	params.Add("school.region_id", queryParams.Region)
-	params.Add("school.degrees_awarded.highest__range", string(queryParams.DegreeType)+"..")
-	params.Add("fields", "school.name,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall")
-	params.Add("per_page", "100")
-	// params.Add("latest.admissions.act_scores.midpoint.cumulative__range", "25..")
-	// params.Add("latest.admissions.admission_rate.overall__range", "..0.3")
-	// params.Add("latest.admissions.sat_scores.average.overall__range", "1200..")
+	// safetyResults := sortColleges(safety)
+	// targetResults := sortColleges(target)
+	// reachResults := sortColleges(reach)
 
-	// Add Query Parameters to the URL
-	baseURL.RawQuery = params.Encode() // Escape Query Parameters
-	log.Printf("Encoded URL is %q\n", baseURL.String())
-
-	response, err := http.Get(baseURL.String())
-	if err != nil {
-		http.Error(w, err.Error(), 500)
+	results := SafetyTargetReach{
+		Safety: safety,
+		Target: target,
+		Reach:  reach,
 	}
 
-	resBody, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	//change this to firestore token not string
-	var colleges ScoreCardResponse
-	err = json.Unmarshal(resBody, &colleges)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	log.Println("total: ", colleges.Metadata.Total)
-	log.Println("page: ", colleges.Metadata.Page)
-
-	totalPages := math.Ceil(float64(colleges.Metadata.Total) / float64(colleges.Metadata.PerPage))
-	log.Println("totalPages: ", totalPages)
-	for i := 1; i < int(totalPages); i++ {
-		a := strconv.Itoa(i)
-		params.Add("page", ""+a)
-		baseURL.RawQuery = params.Encode()
-		response, err := http.Get(baseURL.String())
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-		}
-
-		resBody, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		var tempColleges ScoreCardResponse
-		err = json.Unmarshal(resBody, &tempColleges)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-		colleges.Results = append(colleges.Results, tempColleges.Results...)
-	}
-
-	//Use colleges to narrow down list based on academics/cost
-	for _, college := range colleges.Results {
-		if college.AdmissionsRate < 30 {
-
-		}
-	}
-
-	output, err := json.Marshal(colleges.Results)
+	output, err := json.Marshal(results)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	w.Header().Set("content-type", "application/json")
 	w.Write(output)
 	return
+}
+
+func sortColleges(colleges []Result) []Result {
+	return nil
+}
+
+//SafetyTargetReach structure
+type SafetyTargetReach struct {
+	Safety []Result
+	Target []Result
+	Reach  []Result
+}
+
+//CollegeSelectivityInfo structure
+type CollegeSelectivityInfo struct {
+	ACT  []int `json:"act"`
+	SAT  []int `json:"sat"`
+	Rate int   `json:"rate"`
 }
 
 // ScoreCardResponse structure
@@ -248,13 +326,9 @@ type Metadata struct {
 
 // Location = city/large, suburbs/midsize
 type collegeParams struct {
-	ZIP        string `json:"ZIP"`
-	State      string
-	Region     string
-	ACT        int
-	SAT        int
-	DegreeType string
-	GPA        int32 `json:"GPA"`
-	Majors     []string
-	Location   int
+	ZIP      string `json:"ZIP"`
+	State    string
+	Region   string
+	Majors   []string
+	Location int
 }
