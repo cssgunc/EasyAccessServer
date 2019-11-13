@@ -55,8 +55,20 @@ Or you can run `go test -v` in the terminal to run all tests `-v` gives log outp
   	you will get back all colleges
 /majors - GET no body
 	get back an array of strings
-/matches - GET request.body(User UID)
-  	you will get back array of colleges 
+/collegeMatches - POST request.body
+		type collegeParams struct {
+			ZIP      string `json:"ZIP"`
+			State    string
+			Region   string
+			Majors   []string
+			Location int
+		}
+  	you will get back
+		type SafetyTargetReach struct {
+			Safety []Result
+			Target []Result
+			Reach  []Result
+		}
 /updateUser - PATCH request
 	Body = 
 	{
