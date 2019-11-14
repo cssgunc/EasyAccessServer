@@ -39,6 +39,14 @@
   version = "v3.9.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:a22b66c722f92fb01ce8737abd080a627e6bc654976741c810e06ff1816abe35"
+  name = "github.com/BaileyFrederick/EasyAccessServer"
+  packages = ["handler"]
+  pruneopts = "UT"
+  revision = "77e744c7cce3b2067b5c9361d09f0bdc40cb7702"
+
+[[projects]]
   digest = "1:9f3b30d9f8e0d7040f729b82dcbc8f0dead820a133b3147ce355fc451f32d761"
   name = "github.com/BurntSushi/toml"
   packages = ["."]
@@ -478,6 +486,7 @@
   input-imports = [
     "cloud.google.com/go/firestore",
     "firebase.google.com/go",
+    "github.com/BaileyFrederick/EasyAccessServer/handler",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
     "github.com/go-chi/cors",

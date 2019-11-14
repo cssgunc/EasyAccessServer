@@ -9,10 +9,12 @@ import (
 	"syscall"
 	"time"
 
+	firebase "firebase.google.com/go"
 	"github.com/BaileyFrederick/EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	// "google.golang.org/api/option"
 )
 
 var log *logrus.Logger
@@ -26,9 +28,42 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
+	ProjectID := os.Getenv("PROJECT_ID")
+
 	println("GOPATH set up correctly and project is working")
 
-	err := setHandler()
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer client.Close()
+
+	auth, err := app.Auth(ctx)
+	userRecord, err := auth.GetUserByEmail(ctx, "frederickbailey18@gmail.com")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	println(userRecord.UID)
+
+	//test to change info in firestore
+	p := user{
+		Name: "Firebase working",
+	}
+	//Changes the name of the specific user based on UID to ALICE
+	_, err = client.Collection("users").Doc("755O4T422rS1CgngVpI8").Set(ctx, p)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = setHandler()
 	if err != nil {
 		log.Println(err)
 	}
@@ -36,7 +71,6 @@ func main() {
 
 func setHandler() error {
 	// set up our global handler
-	log.Println("setHandler")
 	h, err := handler.New(handler.Config{
 		Logger: log,
 	})
@@ -44,19 +78,26 @@ func setHandler() error {
 		return errors.Wrap(err, "handler new")
 	}
 
+	println(h)
+	port := os.Getenv("PORT")
+	println(port)
 	server := &http.Server{
 		Handler: h,
-		Addr:    fmt.Sprintf(":%v", 3001),
+		Addr:    fmt.Sprintf(":%v", port),
 	}
 
 	// do graceful server shutdown
 	go gracefulShutdown(server, time.Second*30)
 
-	log.Infof("listening on port %v", 3001)
+	log.Infof("listening on port %v", port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return errors.Wrap(err, "cannot start a server")
 	}
 	return nil
+}
+
+type user struct {
+	Name string
 }
 
 // gracefulShutdown shuts down our server in a graceful way.
