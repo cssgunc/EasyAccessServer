@@ -41,9 +41,9 @@ var client *firestore.Client
 
 func (h *Handler) setUpApp() {
 	ctx := context.Background()
-	ProjectID := os.Getenv("ProjectID")
+	ProjectID := os.Getenv("PROJECT_ID")
 
-	println(ProjectID)
+	println("GOPATH set up correctly and project is working")
 
 	conf := &firebase.Config{ProjectID: ProjectID}
 	app, err := firebase.NewApp(ctx, conf)
