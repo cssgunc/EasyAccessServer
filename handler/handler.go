@@ -40,11 +40,8 @@ var app *firebase.App
 var client *firestore.Client
 
 func (h *Handler) setUpApp() {
+	ProjectID := os.Getenv("ProjectID")
 	ctx := context.Background()
-	ProjectID := os.Getenv("PROJECT_ID")
-
-	println("GOPATH set up correctly and project is working")
-
 	conf := &firebase.Config{ProjectID: ProjectID}
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
@@ -84,7 +81,7 @@ func New(c Config) (*Handler, error) {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	})
 	r.Use(cors.Handler)
-	println("Got to setupApp")
+
 	h.setUpApp()
 	r.Route("/", func(r chi.Router) {
 		// set up routes
