@@ -81,7 +81,7 @@ func New(c Config) (*Handler, error) {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	})
 	r.Use(cors.Handler)
-
+	println("Got to setupApp")
 	h.setUpApp()
 	r.Route("/", func(r chi.Router) {
 		// set up routes
