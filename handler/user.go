@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -139,90 +138,15 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//GetColleges blah
-func (h *Handler) GetColleges(w http.ResponseWriter, r *http.Request) {
-	log.Println("Colleges Endpoint")
-	ctx := context.Background()
-	var colleges []college
-	iter := client.Collection("Colleges").Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return
-		}
-		fmt.Println(doc.Data())
-		bs, err := json.Marshal(doc.Data())
-		var tempCollege college
-		err = json.Unmarshal(bs, &tempCollege)
-		colleges = append(colleges, tempCollege)
-	}
-	output, err := json.Marshal(colleges)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.Write(output)
-	return
-}
-
-//GetMatch blah
-func (h *Handler) GetMatch(w http.ResponseWriter, r *http.Request) {
-	log.Println("Matches Endpoint")
-	ctx := context.Background()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	var userUID string
-	err = json.Unmarshal(body, &userUID)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	var user student
-	dsnap, err := client.Collection("users").Doc(userUID).Get(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), 404)
-		return
-	}
-	dsnap.DataTo(&user)
-	var colleges []college
-	for _, c := range user.Matches {
-		dataSnap, err := client.Collection("Colleges").Doc(c).Get(ctx)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		bs, err := json.Marshal(dataSnap.Data())
-		var tempCollege college
-		err = json.Unmarshal(bs, &tempCollege)
-		colleges = append(colleges, tempCollege)
-	}
-	output, err := json.Marshal(colleges)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.Write(output)
-	return
-}
-
-type college struct {
-	AcceptanceRate float64 `json:"Acceptance Rate"`
-	AverageGPA     float64 `json:"Average GPA"`
-	AverageSAT     int64   `json:"Average SAT"`
-	Diversity      float32 `json:"Diversity"`
-	Name           string  `json:"Name"`
-	Size           int64   `json:"Size"`
-	Zip            int64   `json:"Zip Code"`
-}
+// type college struct {
+// 	AcceptanceRate float64 `json:"Acceptance Rate"`
+// 	AverageGPA     float64 `json:"Average GPA"`
+// 	AverageSAT     int64   `json:"Average SAT"`
+// 	Diversity      float32 `json:"Diversity"`
+// 	Name           string  `json:"Name"`
+// 	Size           int64   `json:"Size"`
+// 	Zip            int64   `json:"Zip Code"`
+// }
 
 type student struct {
 	UID            string   `json:"uid"`
