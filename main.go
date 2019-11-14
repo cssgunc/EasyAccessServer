@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	firestore "cloud.google.com/go/firestore"
+	firebase "firebase.google.com/go"
 	"github.com/BaileyFrederick/EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
@@ -26,20 +28,34 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
+	ProjectID := os.Getenv("PROJECT_ID")
+
 	println("GOPATH set up correctly and project is working")
 
-	err := setHandler()
+	conf := &firebase.Config{ProjectID: ProjectID}
+	app, err := firebase.NewApp(ctx, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer client.Close()
+	err = setHandler(app, client)
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-func setHandler() error {
+func setHandler(app *firebase.App, client *firestore.Client) error {
 	// set up our global handler
 	log.Println("setHandler")
 	h, err := handler.New(handler.Config{
 		Logger: log,
-	})
+	}, app, client)
 	if err != nil {
 		return errors.Wrap(err, "handler new")
 	}

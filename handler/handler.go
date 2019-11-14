@@ -55,7 +55,7 @@ func (h *Handler) setUpApp() {
 }
 
 // New returns a new handler.
-func New(c Config) (*Handler, error) {
+func New(c Config, firebaseApp *firebase.App, firebaseClient *firestore.Client) (*Handler, error) {
 	if err := isValidConfig(c); err != nil {
 		return nil, errors.Wrap(err, "invalid handler config")
 	}
@@ -82,7 +82,9 @@ func New(c Config) (*Handler, error) {
 	})
 	r.Use(cors.Handler)
 
-	h.setUpApp()
+	app = firebaseApp
+	client = firebaseClient
+	//h.setUpApp()
 	r.Route("/", func(r chi.Router) {
 		// set up routes
 		r.Post("/user", h.AuthUser)
