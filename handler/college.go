@@ -281,7 +281,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	println("Waiting")
 	wg.Wait()
 	println("Done")
-	_ = sortColleges(reach, queryParams)
+	_ = sortColleges(target, queryParams)
 	// safetyResults := sortColleges(safety)
 	// targetResults := sortColleges(target)
 	// reachResults := sortColleges(reach)
