@@ -40,7 +40,7 @@ var app *firebase.App
 var client *firestore.Client
 
 func (h *Handler) setUpApp() {
-	ProjectID := os.Getenv("ProjectID")
+	ProjectID := os.Getenv("Project_ID")
 	ctx := context.Background()
 	log.Println(ProjectID)
 	conf := &firebase.Config{ProjectID: ProjectID}
