@@ -3,67 +3,100 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	"strconv"
 
-	firebase "firebase.google.com/go"
+	firestore "cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
-type message struct {
-	UID string `json:"uid"`
+//UUID set when AuthUser is called
+var UUID string
+
+func scoreStudent() int {
+	ctx := context.Background()
+	userInfo, err := client.Collection("users").Doc("xLwd4c1WjKaxG3Vf3GDVMXMTLFE3").Get(ctx)
+	if err != nil {
+		// http.Error(err.Error(), 404)
+	}
+
+	var student student
+	userInfo.DataTo(&student)
+	var potentialScores []string
+	iter := client.Collection("Selectivity").Where("LowGPA", "<=", student.UnweightedGPA).Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatalln(err)
+		}
+		var s selectivity
+		doc.DataTo(&s)
+		if s.HighACT != 0 {
+			if s.LowACT <= student.ACT && student.ACT <= s.HighACT && s.LowGPA <= float64(student.UnweightedGPA) && float64(student.UnweightedGPA) <= s.HighGPA {
+				potentialScores = append(potentialScores, s.Score)
+			}
+		} else {
+			if s.LowSAT <= student.SAT && student.SAT <= s.HighSAT && s.LowGPA <= float64(student.UnweightedGPA) && float64(student.UnweightedGPA) <= s.HighGPA {
+				potentialScores = append(potentialScores, s.Score)
+			}
+		}
+	}
+	topScore := 0
+	for _, score := range potentialScores {
+		i, err := strconv.Atoi(score[len(score)-1:])
+		if err != nil {
+			log.Fatalln(err)
+		}
+		if i > topScore {
+			topScore = i
+		}
+	}
+	log.Println(topScore)
+	return topScore
 }
 
-func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
-	ProjectID := os.Getenv("ProjectID")
-	fmt.Println("Test GET endpoint is being hit now!")
+//AuthUser is
+func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
+	log.Println("User Endpoint")
 	ctx := context.Background()
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("1")
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
+	//change this to firestore token not string
 	var idToken string
 	err = json.Unmarshal(body, &idToken)
 	if err != nil {
-		log.Println("2")
 		http.Error(w, err.Error(), 500)
 		return
 	}
-
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer client.Close()
+	UUID = idToken
 
 	// auth, err := app.Auth(ctx)
 	// if err != nil {
 	// 	log.Fatalln(err)
 	// }
 
-	// token, err := client.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	// token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
 	// if err != nil {
 	// 	log.Fatalf("error verifying ID token: %v\n", err)
 	// }
+	//fix this
 
-	
-	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
+	userInfo, err := client.Collection("users").Doc(UUID).Get(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
-		log.Println("3")
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -72,66 +105,53 @@ func (h *Handler) authUser(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (h *Handler) getColleges(w http.ResponseWriter, r *http.Request) {
-	ProjectID := os.Getenv("ProjectID")
+type updateInfo struct {
+	UID  string             `json:"uid"`
+	Info []firestore.Update `json:"info"`
+}
+
+func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	log.Println("College endpoint")
-	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Fatalln(err)
-	}
-
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer client.Close()
-	var colleges []college
-	iter := client.Collection("Colleges").Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-				break
-		}
-		if err != nil {
-				return
-		}
-		fmt.Println(doc.Data())
-		bs, err := json.Marshal(doc.Data())
-		var tempCollege college
-		err = json.Unmarshal(bs, &tempCollege)
-		colleges = append(colleges, tempCollege)
-	}
-	output, err := json.Marshal(colleges)
-	if err != nil {
-		log.Println("3")
 		http.Error(w, err.Error(), 500)
 		return
 	}
+
+	var newInfo *updateInfo
+	err = json.Unmarshal(body, &newInfo)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	userRef := client.Collection("users").Doc(newInfo.UID)
+	_, err = userRef.Update(ctx, newInfo.Info)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+
 	w.Header().Set("content-type", "application/json")
-	w.Write(output)
+	w.WriteHeader(http.StatusOK)
 	return
-}
-
-func (h *Handler) userInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("Info Endpoint")
 
 }
 
-type college struct {
-	AcceptanceRate float64 `json:"Acceptance Rate"`
-	AverageGPA	float64 `json:"Average GPA"`
-	AverageSAT int64 `json:"Average SAT"`
-	Diversity float32 `json:"Diversity"`
-	Name string `json:"Name"`
-	Size int64 `json:"Size"`
-	Zip int64 `json:"Zip Code"`
-}
+// type college struct {
+// 	AcceptanceRate float64 `json:"Acceptance Rate"`
+// 	AverageGPA     float64 `json:"Average GPA"`
+// 	AverageSAT     int64   `json:"Average SAT"`
+// 	Diversity      float32 `json:"Diversity"`
+// 	Name           string  `json:"Name"`
+// 	Size           int64   `json:"Size"`
+// 	Zip            int64   `json:"Zip Code"`
+// }
 
 type student struct {
 	UID            string   `json:"uid"`
-	Name           string   `json:"name"`
+	FirstName      string   `json:"firstname"`
+	LastName       string   `json:"lastname"`
 	Email          string   `json:"email"`
 	SchoolCode     string   `json:"schoolCode"`
 	GraduationYear string   `json:"graduationYear"`
