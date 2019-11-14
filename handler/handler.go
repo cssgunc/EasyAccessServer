@@ -42,6 +42,7 @@ var client *firestore.Client
 func (h *Handler) setUpApp() {
 	ProjectID := os.Getenv("ProjectID")
 	ctx := context.Background()
+	log.Println(ProjectID)
 	conf := &firebase.Config{ProjectID: ProjectID}
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
