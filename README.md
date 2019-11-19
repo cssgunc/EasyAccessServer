@@ -64,7 +64,7 @@ Firebase: Firestore live at all times. Make sure it is upgraded to one of the fo
 
 	Blaze Plan: Pay for what you use 
 	
-# Architecture
+# Architecture Design Record (ADR)
 
  See adr-back-end.md file
  
