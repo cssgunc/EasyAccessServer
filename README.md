@@ -200,4 +200,78 @@ Type of Degree
 2	Associate degree
 3	Bachelor's degree
 4	Graduate degree
+
+locale
+11	City: Large (population of 250,000 or more)
+12	City: Midsize (population of at least 100,000 but less than 250,000)
+13	City: Small (population less than 100,000)
+21	Suburb: Large (outside principal city, in urbanized area with population of 250,000 or more)
+22	Suburb: Midsize (outside principal city, in urbanized area with population of at least 100,000 but less than 250,000)
+23	Suburb: Small (outside principal city, in urbanized area with population less than 100,000)
+31	Town: Fringe (in urban cluster up to 10 miles from an urbanized area)
+32	Town: Distant (in urban cluster more than 10 miles and up to 35 miles from an urbanized area)
+33	Town: Remote (in urban cluster more than 35 miles from an urbanized area)
+41	Rural: Fringe (rural territory up to 5 miles from an urbanized area or up to 2.5 miles from an urban cluster)
+42	Rural: Distant (rural territory more than 5 miles but up to 25 miles from an urbanized area or more than 2.5 and up to 10 miles from an urban cluster)
+43	Rural: Remote (rural territory more than 25 miles from an urbanized area and more than 10 miles from an urban cluster)
+
+States
+1	Alabama
+2	Alaska
+4	Arizona
+5	Arkansas
+6	California
+8	Colorado
+9	Connecticut
+10	Delaware
+11	District of Columbia
+12	Florida
+13	Georgia
+15	Hawaii
+16	Idaho
+17	Illinois
+18	Indiana
+19	Iowa
+20	Kansas
+21	Kentucky
+22	Louisiana
+23	Maine
+24	Maryland
+25	Massachusetts
+26	Michigan
+27	Minnesota
+28	Mississippi
+29	Missouri
+30	Montana
+31	Nebraska
+32	Nevada
+33	New Hampshire
+34	New Jersey
+35	New Mexico
+36	New York
+37	North Carolina
+38	North Dakota
+39	Ohio
+40	Oklahoma
+41	Oregon
+42	Pennsylvania
+44	Rhode Island
+45	South Carolina
+46	South Dakota
+47	Tennessee
+48	Texas
+49	Utah
+50	Vermont
+51	Virginia
+53	Washington
+54	West Virginia
+55	Wisconsin
+56	Wyoming
+60	American Samoa
+64	Federated States of Micronesia
+66	Guam
+69	Northern Mariana Islands
+70	Palau
+72	Puerto Rico
+78	Virgin Islands
 ```
