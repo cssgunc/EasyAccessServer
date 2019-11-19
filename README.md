@@ -49,10 +49,15 @@ Or you can run `go test -v` in the terminal to run all tests `-v` gives log outp
 
 # Deployment
 
-Heroku: No addons. Set up through git. Git push heroku master will publish master branch to production.
-	
-	Make sure dynos are upgraded. heroku ps: web=1 will start one dyno. 0=no dynos on, 
+Heroku: No addons. Set up through git. Uses the procfile to figure out which command to run to start the program.
 
+	`Git push heroku master` will publish master branch from git to production.
+	
+	
+Dynos are isolated, virtualized Linux containers that are designed to execute code based on a user-specified command. Your app can scale to any specified number of dynos based on its resource demands. Heroku’s container management capabilities provide you with an easy way to scale and manage the number, size, and type of dynos your app may need at any given time.
+	
+	Make sure dynos are upgraded. heroku ps:scale web=1 will start one dyno. 0=no dynos on
+	
 Firebase: Firestore live at all times. Make sure it is upgraded to one of the following plans when in production
 
 	Flame Plan: Fixed rate
