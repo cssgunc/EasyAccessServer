@@ -78,33 +78,33 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := app.Auth(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// auth, err := app.Auth(ctx)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
 
-	token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
-	if err != nil {
-		log.Fatalf("error verifying ID token: %v\n", err)
-	}
+	// token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	// if err != nil {
+	// 	log.Fatalf("error verifying ID token: %v\n", err)
+	// }
 
-	userInfo, err := client.Collection("users").Doc(token.UID).Get(ctx)
+	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
 	}
-	outputToken, err := json.Marshal(token)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
+	// outputToken, err := json.Marshal(token)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Write(outputToken)
+	// w.Write(outputToken)
 	w.Write(output)
 	return
 }
