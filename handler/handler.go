@@ -92,6 +92,7 @@ func New(c Config) (*Handler, error) {
 		r.Get("/majors", h.collegeMajors)
 		r.Get("/updateSelectivityScores", h.updateSelectivityScores)
 		r.Get("/updateSchoolNeedMet", h.updateSchoolNeedMet)
+		r.Post("/addUserInfo", h.addUserInfo)
 	})
 	r.Get("/health", h.health)
 
