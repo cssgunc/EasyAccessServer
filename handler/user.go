@@ -77,7 +77,6 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	UUID = idToken
 
 	// auth, err := app.Auth(ctx)
 	// if err != nil {
@@ -88,21 +87,59 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	// if err != nil {
 	// 	log.Fatalf("error verifying ID token: %v\n", err)
 	// }
-	//fix this
 
-	userInfo, err := client.Collection("users").Doc(UUID).Get(ctx)
+	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
 	}
+	// outputToken, err := json.Marshal(token)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
+	// w.Write(outputToken)
 	w.Write(output)
 	return
+}
+
+func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	// body1, err := ioutil.ReadAll(r.Body)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
+	// var idToken auth.Token
+	// err = json.Unmarshal(body1, &idToken)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
+
+	body2, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var user student
+	err = json.Unmarshal(body2, &user)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	_, err = client.Collection("users").Doc(user.UID).Set(ctx, user)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 }
 
 type updateInfo struct {
