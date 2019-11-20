@@ -85,6 +85,34 @@ func (h *Handler) updateSelectivityScores(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (h *Handler) updateSchoolNeedMet(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	file, err := os.Open("handler/school.csv")
+	if err != nil {
+
+	}
+	csvfile := csv.NewReader(file)
+	for {
+		// Read each record from csv
+		record, err := csvfile.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		schoolName := record[0]
+		needMet, err := strconv.Atoi(record[1])
+		m := make(map[string]int)
+		m[schoolName] = needMet
+		_, err = client.Collection("NeedMet").Doc(schoolName).Set(ctx, m)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println(schoolName, needMet)
+	}
+}
+
 type selectivityACT struct {
 	Score   string
 	LowACT  int

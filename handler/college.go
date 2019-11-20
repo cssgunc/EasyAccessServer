@@ -163,7 +163,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	params.Add("school.region_id", queryParams.Region)
 	params.Add("school.degrees_awarded.highest__range", "3..")
-	params.Add("fields", "school.name,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall"+majorString)
+	params.Add("fields", "school.name,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
 	params.Add("per_page", "100")
 	params.Add("latest.admissions.act_scores.midpoint.cumulative__range", lowAct+".."+highAct)
 	params.Add("latest.admissions.admission_rate.overall__range", ".."+rate)
@@ -192,6 +192,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 
 	totalPages := math.Ceil(float64(scorecardColleges.Metadata.Total) / float64(scorecardColleges.Metadata.PerPage))
 	log.Println("totalPages: ", totalPages)
+
 	for i := 1; i < int(totalPages); i++ {
 		a := strconv.Itoa(i)
 		params.Add("page", ""+a)
@@ -213,15 +214,19 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 		}
 		scorecardColleges.Results = append(scorecardColleges.Results, tempColleges.Results...)
 	}
+
 	var colleges []college
 	for _, c := range scorecardColleges.Results {
-		majors := make(map[string]float32)
-		majors["History"] = c.History
+		majors := parseMajors(queryParams, c)
 		temp := college{
 			c.SchoolName,
 			c.AvgACT,
 			c.AvgSat,
 			c.AdmissionsRate,
+			c.Size,
+			c.Location,
+			c.State,
+			c.Ownership,
 			majors,
 		}
 		colleges = append(colleges, temp)
@@ -234,9 +239,173 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	return colleges, nil
 }
 
+func parseMajors(queryParams collegeParams, college Result) map[string]float32 {
+	var temp map[string]float32
+	temp = make(map[string]float32)
+	switch queryParams.Majors[0] {
+	case "ariculture":
+		temp["agricuture"] = college.Agriculture
+	case "resources":
+		temp["resources"] = college.Resources
+	case "architecture":
+		temp["architecture"] = college.Architecture
+	case "ethnicCulturalGender":
+		temp["ethnicCulturalGender"] = college.EthnicCulturalGender
+	case "communication":
+		temp["communication"] = college.Communication
+	case "communicationsTechnology":
+		temp["communicationsTechnology"] = college.CommunicationsTechnology
+	case "computer":
+		temp["computer"] = college.Computer
+	case "personalCulinary":
+		temp["personalCulinary"] = college.PersonalCulinary
+	case "education":
+		temp["education"] = college.Education
+	case "engineering":
+		temp["engineering"] = college.Engineering
+	case "engineeringTechnology":
+		temp["engineeringTechnology"] = college.EngineeringTechnology
+	case "language":
+		temp["language"] = college.Language
+	case "familyConsumerScience":
+		temp["familyConsumerScience"] = college.FamilyConsumerScience
+	case "legal":
+		temp["legal"] = college.Legal
+	case "english":
+		temp["english"] = college.English
+	case "humanities":
+		temp["humanities"] = college.Humanities
+	case "library":
+		temp["library"] = college.Library
+	case "biological":
+		temp["biological"] = college.Biological
+	case "mathematics":
+		temp["mathematics"] = college.Mathematics
+	case "military":
+		temp["military"] = college.Military
+	case "multidiscipline":
+		temp["multidiscipline"] = college.Multidiscipline
+	case "parksRecreationFitness":
+		temp["parksRecreationFitness"] = college.ParksRecreationFitness
+	case "philosophyReligious":
+		temp["philosophyReligious"] = college.PhilosophyReligious
+	case "theologyReligiousVocation":
+		temp["theologyReligiousVocation"] = college.TheologyReligiousVocation
+	case "physicalScience":
+		temp["physicalScience"] = college.PhysicalScience
+	case "scienceTechnology":
+		temp["scienceTechnology"] = college.ScienceTechnology
+	case "psychology":
+		temp["psychology"] = college.Psychology
+	case "securityLawEnforcement":
+		temp["securityLawEnforcement"] = college.SecurityLawEnforcement
+	case "publicAdministrationSocialService":
+		temp["publicAdministrationSocialService"] = college.PublicAdministrationSocialService
+	case "socialScience":
+		temp["socialScience"] = college.SocialScience
+	case "construction":
+		temp["construction"] = college.Construction
+	case "mechanicRepairTechnology":
+		temp["mechanicRepairTechnology"] = college.MechanicRepairTechnology
+	case "precisionProduction":
+		temp["precisionProduction"] = college.PrecisionProduction
+	case "transportation":
+		temp["transportation"] = college.Transportation
+	case "visualPerforming":
+		temp["visualPerforming"] = college.VisualPerforming
+	case "health":
+		temp["health"] = college.Health
+	case "businessMarketing":
+		temp["businessMarketing"] = college.BusinessMarketing
+	case "history":
+		temp["history"] = college.History
+	}
+
+	if len(queryParams.Majors) == 2 {
+		switch queryParams.Majors[1] {
+		case "ariculture":
+			temp["agricuture"] = college.Agriculture
+		case "resources":
+			temp["resources"] = college.Resources
+		case "architecture":
+			temp["architecture"] = college.Architecture
+		case "ethnicCulturalGender":
+			temp["ethnicCulturalGender"] = college.EthnicCulturalGender
+		case "communication":
+			temp["communication"] = college.Communication
+		case "communicationsTechnology":
+			temp["communicationsTechnology"] = college.CommunicationsTechnology
+		case "computer":
+			temp["computer"] = college.Computer
+		case "personalCulinary":
+			temp["personalCulinary"] = college.PersonalCulinary
+		case "education":
+			temp["education"] = college.Education
+		case "engineering":
+			temp["engineering"] = college.Engineering
+		case "engineeringTechnology":
+			temp["engineeringTechnology"] = college.EngineeringTechnology
+		case "language":
+			temp["language"] = college.Language
+		case "familyConsumerScience":
+			temp["familyConsumerScience"] = college.FamilyConsumerScience
+		case "legal":
+			temp["legal"] = college.Legal
+		case "english":
+			temp["english"] = college.English
+		case "humanities":
+			temp["humanities"] = college.Humanities
+		case "library":
+			temp["library"] = college.Library
+		case "biological":
+			temp["biological"] = college.Biological
+		case "mathematics":
+			temp["mathematics"] = college.Mathematics
+		case "military":
+			temp["military"] = college.Military
+		case "multidiscipline":
+			temp["multidiscipline"] = college.Multidiscipline
+		case "parksRecreationFitness":
+			temp["parksRecreationFitness"] = college.ParksRecreationFitness
+		case "philosophyReligious":
+			temp["philosophyReligious"] = college.PhilosophyReligious
+		case "theologyReligiousVocation":
+			temp["theologyReligiousVocation"] = college.TheologyReligiousVocation
+		case "physicalScience":
+			temp["physicalScience"] = college.PhysicalScience
+		case "scienceTechnology":
+			temp["scienceTechnology"] = college.ScienceTechnology
+		case "psychology":
+			temp["psychology"] = college.Psychology
+		case "securityLawEnforcement":
+			temp["securityLawEnforcement"] = college.SecurityLawEnforcement
+		case "publicAdministrationSocialService":
+			temp["publicAdministrationSocialService"] = college.PublicAdministrationSocialService
+		case "socialScience":
+			temp["socialScience"] = college.SocialScience
+		case "construction":
+			temp["construction"] = college.Construction
+		case "mechanicRepairTechnology":
+			temp["mechanicRepairTechnology"] = college.MechanicRepairTechnology
+		case "precisionProduction":
+			temp["precisionProduction"] = college.PrecisionProduction
+		case "transportation":
+			temp["transportation"] = college.Transportation
+		case "visualPerforming":
+			temp["visualPerforming"] = college.VisualPerforming
+		case "health":
+			temp["health"] = college.Health
+		case "businessMarketing":
+			temp["businessMarketing"] = college.BusinessMarketing
+		case "history":
+			temp["history"] = college.History
+		}
+	}
+	return temp
+}
+
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
-	log.Println(ctx)
+	// ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -265,7 +434,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		safety, err = queryColleges(&selectivityInfo[0], queryParams, nil)
 	}
 
-	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX WORKING HERE
 	c1 := make(chan []college)
 	c2 := make(chan []college)
 	log.Println("Target")
@@ -281,15 +449,14 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	println("Waiting")
 	wg.Wait()
 	println("Done")
-	_ = sortColleges(reach, queryParams)
-	// safetyResults := sortColleges(safety)
-	// targetResults := sortColleges(target)
-	// reachResults := sortColleges(reach)
+	safetyResults := sortColleges(safety, queryParams)
+	targetResults := sortColleges(target, queryParams)
+	reachResults := sortColleges(reach, queryParams)
 
 	results := SafetyTargetReach{
-		Safety: safety,
-		Target: target,
-		Reach:  reach,
+		Safety: safetyResults,
+		Target: targetResults,
+		Reach:  reachResults,
 	}
 
 	output, err := json.Marshal(results)
@@ -302,15 +469,26 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func sortColleges(colleges []college, queryParams collegeParams) []Result {
-	// var sortedColleges []college
+func sortColleges(colleges []college, queryParams collegeParams) []college {
+	//name to college
+	// used to look up college based on name from ranking
+	var collegeDict map[string]college
+	collegeDict = make(map[string]college)
+	//name to sorted rank
+	var rankColleges map[string]int
+	rankColleges = make(map[string]int)
 	//major
-	sort.SliceStable(colleges, func(i, j int) bool {
-		return colleges[i].Majors[queryParams.Majors[0]] > colleges[j].Majors[queryParams.Majors[0]]
-	})
-
+	// sort.SliceStable(colleges, func(i, j int) bool {
+	// 	return colleges[i].Majors[queryParams.Majors[0]] > colleges[j].Majors[queryParams.Majors[0]]
+	// })
 	for _, c := range colleges {
-		log.Println(c.Majors[queryParams.Majors[0]])
+		collegeDict[c.SchoolName] = c
+		log.Println(c.Majors[queryParams.Majors[0]], c.Majors[queryParams.Majors[1]])
+		if c.Majors[queryParams.Majors[0]] != 0 && c.Majors[queryParams.Majors[1]] != 0 {
+			rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+		} else {
+			rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 0
+		}
 	}
 
 	//Size
@@ -318,7 +496,36 @@ func sortColleges(colleges []college, queryParams collegeParams) []Result {
 	//Location: City/large
 
 	//in/out of state
-	return nil
+
+	//use sortedColleges to look up list of actual colleges
+
+	type kv struct {
+		Key   string
+		Value int
+	}
+
+	var sortedColleges []kv
+	for k, v := range rankColleges {
+		sortedColleges = append(sortedColleges, kv{k, v})
+	}
+
+	sort.Slice(sortedColleges, func(i, j int) bool {
+		return sortedColleges[i].Value > sortedColleges[j].Value
+	})
+
+	var finalSort []college
+	finalSort = make([]college, len(colleges))
+	for i, kv := range sortedColleges {
+		finalSort[i] = collegeDict[kv.Key]
+		fmt.Printf("%s, %d\n", kv.Key, kv.Value)
+	}
+
+	return finalSort
+}
+
+type rank struct {
+	School college
+	rank   int
 }
 
 //SafetyTargetReach structure
@@ -347,6 +554,10 @@ type Result struct {
 	AvgACT                            float32 `json:"latest.academics.act_scores.midpoint.cumulative"`
 	AvgSat                            float32 `json:"latest.academics.sat_scores.average.overall"`
 	AdmissionsRate                    float32 `json:"latest.academics.admission_rate.overall"`
+	Size                              int     `json:"latest.student.size"`
+	Location                          int     `json:"school.locale"`
+	State                             int     `json:"school.state_fips"`
+	Ownership                         int     `json:"school.ownership"`
 	Agriculture                       float32 `json:"latest.academics.program_percentage.agriculture"`
 	Resources                         float32 `json:"latest.academics.program_percentage.resources"`
 	Architecture                      float32 `json:"latest.academics.program_percentage.architecture"`
@@ -392,6 +603,10 @@ type college struct {
 	AvgACT         float32
 	AvgSat         float32
 	AdmissionsRate float32
+	Size           int
+	Location       int
+	State          int
+	Ownership      int
 	Majors         map[string]float32
 }
 
