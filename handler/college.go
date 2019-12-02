@@ -127,7 +127,7 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	var target []CollegeSelectivityInfo
 	var reach []CollegeSelectivityInfo
 	var safety []CollegeSelectivityInfo
-	if score != 1 {
+	if score != 2 {
 		var temp info
 		safetyScore := strconv.Itoa(score - 1)
 		log.Println("SafetyScore: ", safetyScore)
