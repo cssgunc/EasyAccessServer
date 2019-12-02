@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var act int
@@ -101,10 +102,10 @@ func (h *Handler) updateSchoolNeedMet(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		schoolName := record[0]
+		schoolName := strings.TrimSpace(record[0])
 		needMet, err := strconv.Atoi(record[1])
 		m := make(map[string]int)
-		m[schoolName] = needMet
+		m["NeedMet"] = needMet
 		_, err = client.Collection("NeedMet").Doc(schoolName).Set(ctx, m)
 		if err != nil {
 			log.Fatalln(err)

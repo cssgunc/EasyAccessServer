@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"io/ioutil"
@@ -23,6 +24,8 @@ import (
 )
 
 var wg sync.WaitGroup
+var needMap map[string]int
+var statesMap map[string]int
 
 func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open("handler/majors.csv")
@@ -108,7 +111,7 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 	// return
 }
 
-func getCollegeRanges(score int) ([]CollegeSelectivityInfo, error) {
+func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	ctx := context.Background()
 	targetScore := strconv.Itoa(score)
 	targetInfo, err := client.Collection("Selectivity").Doc(targetScore).Get(ctx)
@@ -121,22 +124,93 @@ func getCollegeRanges(score int) ([]CollegeSelectivityInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	var target CollegeSelectivityInfo
-	var reach CollegeSelectivityInfo
-	var safety CollegeSelectivityInfo
-	if score != 1 {
+	var target []CollegeSelectivityInfo
+	var reach []CollegeSelectivityInfo
+	var safety []CollegeSelectivityInfo
+	if score != 2 {
+		var temp info
 		safetyScore := strconv.Itoa(score - 1)
+		log.Println("SafetyScore: ", safetyScore)
 		safetyInfo, err := client.Collection("Selectivity").Doc(safetyScore).Get(ctx)
 		if err != nil {
 			return nil, err
 		}
-		safetyInfo.DataTo(&safety)
+		safetyInfo.DataTo(&temp)
+		for _, info := range temp.Info {
+			str := strings.Split(info, ",")
+			lACT, err := strconv.Atoi(str[0])
+			hACT, err := strconv.Atoi(str[1])
+			lSAT, err := strconv.Atoi(str[2])
+			hSAT, err := strconv.Atoi(str[3])
+			lRate, err := strconv.ParseFloat(str[4], 64)
+			hRate, err := strconv.ParseFloat(str[5], 64)
+			if err != nil {
+
+			}
+			safetySelectivity := CollegeSelectivityInfo{
+				Score:    score - 1,
+				lowACT:   lACT,
+				highACT:  hACT,
+				lowSAT:   lSAT,
+				highSAT:  hSAT,
+				lowRate:  lRate,
+				highRate: hRate,
+			}
+			safety = append(safety, safetySelectivity)
+		}
 	}
 
-	targetInfo.DataTo(&target)
-	reachInfo.DataTo(&reach)
+	var tempTarget info
+	targetInfo.DataTo(&tempTarget)
+	for _, info := range tempTarget.Info {
+		str := strings.Split(info, ",")
+		lACT, err := strconv.Atoi(str[0])
+		hACT, err := strconv.Atoi(str[1])
+		lSAT, err := strconv.Atoi(str[2])
+		hSAT, err := strconv.Atoi(str[3])
+		lRate, err := strconv.ParseFloat(str[4], 32)
+		hRate, err := strconv.ParseFloat(str[5], 32)
+		if err != nil {
 
-	info := []CollegeSelectivityInfo{safety, target, reach}
+		}
+		targetSelectivity := CollegeSelectivityInfo{
+			Score:    score - 1,
+			lowACT:   lACT,
+			highACT:  hACT,
+			lowSAT:   lSAT,
+			highSAT:  hSAT,
+			lowRate:  lRate,
+			highRate: hRate,
+		}
+		target = append(target, targetSelectivity)
+	}
+
+	var tempReach info
+	reachInfo.DataTo(&tempReach)
+	for _, info := range tempReach.Info {
+		str := strings.Split(info, ",")
+		lACT, err := strconv.Atoi(str[0])
+		hACT, err := strconv.Atoi(str[1])
+		lSAT, err := strconv.Atoi(str[2])
+		hSAT, err := strconv.Atoi(str[3])
+		lRate, err := strconv.ParseFloat(str[4], 32)
+		hRate, err := strconv.ParseFloat(str[5], 32)
+		if err != nil {
+
+		}
+		reachSelectivity := CollegeSelectivityInfo{
+			Score:    score - 1,
+			lowACT:   lACT,
+			highACT:  hACT,
+			lowSAT:   lSAT,
+			highSAT:  hSAT,
+			lowRate:  lRate,
+			highRate: hRate,
+		}
+		reach = append(reach, reachSelectivity)
+	}
+
+	info := [][]CollegeSelectivityInfo{safety, target, reach}
 
 	return info, nil
 }
@@ -152,11 +226,13 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 		majorString = majorString + ",latest.academics.program_percentage." + major
 	}
 	//sets ranges of possible scores to limit query
-	lowAct := strconv.Itoa(selectivityInfo.ACT[0])
-	highAct := strconv.Itoa(selectivityInfo.ACT[1])
-	lowSat := strconv.Itoa(selectivityInfo.SAT[0])
-	highSat := strconv.Itoa(selectivityInfo.SAT[1])
-	rate := strconv.Itoa(selectivityInfo.Rate)
+	lowAct := strconv.Itoa(selectivityInfo.lowACT)
+	highAct := strconv.Itoa(selectivityInfo.highACT)
+	lowSat := strconv.Itoa(selectivityInfo.lowSAT)
+	highSat := strconv.Itoa(selectivityInfo.highSAT)
+	lowRate := strconv.FormatFloat(selectivityInfo.lowRate, 'f', 1, 64)
+	highRate := strconv.FormatFloat(selectivityInfo.highRate, 'f', 1, 64)
+	log.Println("XXX", lowRate, highRate)
 
 	// Prepare Query Parameters
 	params := url.Values{}
@@ -166,9 +242,11 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	params.Add("fields", "school.name,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
 	params.Add("per_page", "100")
 	params.Add("latest.admissions.act_scores.midpoint.cumulative__range", lowAct+".."+highAct)
-	params.Add("latest.admissions.admission_rate.overall__range", ".."+rate)
+	params.Add("latest.admissions.admission_rate.overall__range", lowRate+".."+highRate)
 	params.Add("latest.admissions.sat_scores.average.overall__range", lowSat+".."+highSat)
-
+	// for _, v := range queryParams.Majors {
+	// 	params.Add("latest.academics.program_percentage."+v+"__range", "0.00000001..")
+	// }
 	// Add Query Parameters to the URL
 	baseURL.RawQuery = params.Encode() // Escape Query Parameters
 	log.Printf("Encoded URL is %q\n", baseURL.String())
@@ -214,14 +292,13 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 		}
 		scorecardColleges.Results = append(scorecardColleges.Results, tempColleges.Results...)
 	}
-
 	var colleges []college
 	for _, c := range scorecardColleges.Results {
 		majors := parseMajors(queryParams, c)
 		temp := college{
 			c.SchoolName,
 			c.AvgACT,
-			c.AvgSat,
+			c.AvgSAT,
 			c.AdmissionsRate,
 			c.Size,
 			c.Location,
@@ -429,26 +506,45 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var safety []college
-	if selectivityInfo[0].Rate != 0 {
-		log.Println("Safety")
-		safety, err = queryColleges(&selectivityInfo[0], queryParams, nil)
+	for _, v := range selectivityInfo[0] {
+		temp, err := queryColleges(&v, queryParams, nil)
+		if err != nil {
+
+		}
+		safety = append(safety, temp...)
+	}
+	var target []college
+	for _, v := range selectivityInfo[1] {
+		temp, err := queryColleges(&v, queryParams, nil)
+		if err != nil {
+
+		}
+		target = append(target, temp...)
+	}
+	var reach []college
+	for _, v := range selectivityInfo[2] {
+		temp, err := queryColleges(&v, queryParams, nil)
+		if err != nil {
+
+		}
+		reach = append(reach, temp...)
 	}
 
-	c1 := make(chan []college)
-	c2 := make(chan []college)
-	log.Println("Target")
-	wg.Add(1)
-	go queryColleges(&selectivityInfo[1], queryParams, c1)
-	log.Println("Reach")
-	wg.Add(1)
-	go queryColleges(&selectivityInfo[2], queryParams, c2)
-	target := <-c1
-	reach := <-c2
-	println(target)
+	// c1 := make(chan []college)
+	// c2 := make(chan []college)
+	// log.Println("Target")
+	// wg.Add(1)
+	// go queryColleges(&selectivityInfo[1][0], queryParams, c1)
+	// log.Println("Reach")
+	// wg.Add(1)
+	// go queryColleges(&selectivityInfo[2][0], queryParams, c2)
+	// target := <-c1
+	// reach := <-c2
+	// println(target)
 
-	println("Waiting")
-	wg.Wait()
-	println("Done")
+	// println("Waiting")
+	// wg.Wait()
+	// println("Done")
 	safetyResults := sortColleges(safety, queryParams)
 	targetResults := sortColleges(target, queryParams)
 	reachResults := sortColleges(reach, queryParams)
@@ -474,20 +570,70 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 	// used to look up college based on name from ranking
 	var collegeDict map[string]college
 	collegeDict = make(map[string]college)
+
 	//name to sorted rank
 	var rankColleges map[string]int
 	rankColleges = make(map[string]int)
-	//major
-	// sort.SliceStable(colleges, func(i, j int) bool {
-	// 	return colleges[i].Majors[queryParams.Majors[0]] > colleges[j].Majors[queryParams.Majors[0]]
-	// })
+
+	//Has Major
+	var majorColleges map[string]int
+	majorColleges = make(map[string]int)
+
+	if len(needMap) == 0 {
+		needMap = getSchoolNeedMet()
+	}
+
+	if len(statesMap) == 0 {
+		statesMap = getStateCodes()
+	}
+
+	//major and affordability
+	//requires majors and only shows schools based on affordability algorithm
+	ATP := 5000
 	for _, c := range colleges {
-		collegeDict[c.SchoolName] = c
-		log.Println(c.Majors[queryParams.Majors[0]], c.Majors[queryParams.Majors[1]])
-		if c.Majors[queryParams.Majors[0]] != 0 && c.Majors[queryParams.Majors[1]] != 0 {
-			rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-		} else {
-			rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 0
+		switch len(queryParams.Majors) {
+		case 1:
+			if c.Majors[queryParams.Majors[0]] != 0 {
+				majorColleges[c.SchoolName] = majorColleges[c.SchoolName] + 1
+				collegeDict[c.SchoolName] = c
+			}
+		case 2:
+			if c.Majors[queryParams.Majors[0]] != 0 && c.Majors[queryParams.Majors[1]] != 0 {
+				majorColleges[c.SchoolName] = majorColleges[c.SchoolName] + 1
+				collegeDict[c.SchoolName] = c
+			}
+		}
+		_, exists := majorColleges[c.SchoolName]
+		log.Println(exists)
+		switch c.Ownership {
+		case 1:
+			//if in-state
+			if c.State == statesMap["North Carolina"] {
+				rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+			} else {
+				//if out-of-state
+				if strings.Contains(c.SchoolName, "University of North Carolina at Chapel Hill") || strings.Contains(c.SchoolName, "University of Michigan") || strings.Contains(c.SchoolName, "University of Virginia") {
+
+				}
+			}
+		default:
+			if exists {
+				if ATP <= 6000 {
+					if needMap[c.SchoolName] >= 90 {
+						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+					}
+				} else if ATP >= 6000 && ATP <= 10000 {
+					if needMap[c.SchoolName] >= 87 {
+						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+					}
+				} else if ATP >= 10000 && ATP <= 15000 {
+					if needMap[c.SchoolName] >= 85 {
+						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+					}
+				} else {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			}
 		}
 	}
 
@@ -498,7 +644,6 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 	//in/out of state
 
 	//use sortedColleges to look up list of actual colleges
-
 	type kv struct {
 		Key   string
 		Value int
@@ -514,13 +659,62 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 	})
 
 	var finalSort []college
-	finalSort = make([]college, len(colleges))
+	finalSort = make([]college, len(rankColleges))
 	for i, kv := range sortedColleges {
 		finalSort[i] = collegeDict[kv.Key]
-		fmt.Printf("%s, %d\n", kv.Key, kv.Value)
 	}
 
 	return finalSort
+}
+
+func getSchoolNeedMet() map[string]int {
+	file, err := os.Open("handler/school.csv")
+	if err != nil {
+
+	}
+	m := make(map[string]int)
+	csvfile := csv.NewReader(file)
+	for {
+		// Read each record from csv
+		record, err := csvfile.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		schoolName := strings.TrimSpace(record[0])
+		needMet, err := strconv.Atoi(record[1])
+		m[schoolName] = needMet
+	}
+	return m
+}
+
+func getStateCodes() map[string]int {
+	file, err := os.Open("handler/stateCodes.csv")
+	if err != nil {
+
+	}
+	m := make(map[string]int)
+	csvfile := csv.NewReader(file)
+	for {
+		// Read each record from csv
+		record, err := csvfile.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		state := strings.TrimSpace(record[1])
+		code, err := strconv.Atoi(record[0])
+		m[state] = code
+	}
+	return m
+}
+
+type need struct {
+	NeedMet int `json:"NeedMet"`
 }
 
 type rank struct {
@@ -535,11 +729,26 @@ type SafetyTargetReach struct {
 	Reach  []college
 }
 
+// //CollegeSelectivityInfo structure
+// type CollegeSelectivityInfo struct {
+// 	ACT  []int `json:"act"`
+// 	SAT  []int `json:"sat"`
+// 	Rate int   `json:"rate"`
+// }
+
 //CollegeSelectivityInfo structure
 type CollegeSelectivityInfo struct {
-	ACT  []int `json:"act"`
-	SAT  []int `json:"sat"`
-	Rate int   `json:"rate"`
+	Score    int
+	lowACT   int
+	highACT  int
+	lowSAT   int
+	highSAT  int
+	lowRate  float64
+	highRate float64
+}
+
+type info struct {
+	Info []string `json:"info"`
 }
 
 // ScoreCardResponse structure
@@ -551,9 +760,9 @@ type ScoreCardResponse struct {
 // Result structure
 type Result struct {
 	SchoolName                        string  `json:"school.name"`
-	AvgACT                            float32 `json:"latest.academics.act_scores.midpoint.cumulative"`
-	AvgSat                            float32 `json:"latest.academics.sat_scores.average.overall"`
-	AdmissionsRate                    float32 `json:"latest.academics.admission_rate.overall"`
+	AvgACT                            float32 `json:"latest.admissions.act_scores.midpoint.cumulative"`
+	AvgSAT                            float32 `json:"latest.admissions.sat_scores.average.overall"`
+	AdmissionsRate                    float32 `json:"latest.admissions.admission_rate.overall"`
 	Size                              int     `json:"latest.student.size"`
 	Location                          int     `json:"school.locale"`
 	State                             int     `json:"school.state_fips"`
@@ -601,7 +810,7 @@ type Result struct {
 type college struct {
 	SchoolName     string
 	AvgACT         float32
-	AvgSat         float32
+	AvgSAT         float32
 	AdmissionsRate float32
 	Size           int
 	Location       int
