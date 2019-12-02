@@ -203,5 +203,5 @@ type student struct {
 	Majors         []string `json:"majors"`
 	Distance       string   `json:"distance"`
 	Zip            string   `json:"zip"`
-	Matches        []string `json:"matches"`
+	AbilityToPay   int      `json:"abilityToPay"`
 }
