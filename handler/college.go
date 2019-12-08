@@ -589,8 +589,9 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 
 	//major and affordability
 	//requires majors and only shows schools based on affordability algorithm
-	ATP := 5000
 	for _, c := range colleges {
+
+		//Checks if the school has wanted majors
 		switch len(queryParams.Majors) {
 		case 1:
 			if c.Majors[queryParams.Majors[0]] != 0 {
@@ -604,40 +605,73 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 			}
 		}
 		_, exists := majorColleges[c.SchoolName]
-		log.Println(exists)
-		switch c.Ownership {
-		case 1:
-			//if in-state
-			if c.State == statesMap["North Carolina"] {
-				rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-			} else {
-				//if out-of-state
-				if strings.Contains(c.SchoolName, "University of North Carolina at Chapel Hill") || strings.Contains(c.SchoolName, "University of Michigan") || strings.Contains(c.SchoolName, "University of Virginia") {
 
+		//Checks if the school exists in the list of schools that has the wanted majors then sorts
+		if exists {
+
+			//Affordability sort
+			switch c.Ownership {
+			//Public
+			case 1:
+				//if in-state
+				if c.State == statesMap[user.State] {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				} else {
+					//if out-of-state
+					if user.AbilityToPay < 25000 {
+						if strings.Contains(c.SchoolName, "University of North Carolina at Chapel Hill") || strings.Contains(c.SchoolName, "University of Michigan-Ann Arbor") || strings.Contains(c.SchoolName, "University of Virginia-Main Campus") {
+							rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+						}
+						//add regional colleges here
+					} else {
+						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+					}
 				}
-			}
-		default:
-			if exists {
-				if ATP <= 6000 {
+			//Private
+			default:
+				if user.AbilityToPay <= 6000 {
 					if needMap[c.SchoolName] >= 90 {
 						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 					}
-				} else if ATP >= 6000 && ATP <= 10000 {
+				} else if user.AbilityToPay >= 6000 && user.AbilityToPay <= 10000 {
 					if needMap[c.SchoolName] >= 87 {
 						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 					}
-				} else if ATP >= 10000 && ATP <= 15000 {
+				} else if user.AbilityToPay >= 10000 && user.AbilityToPay <= 15000 {
 					if needMap[c.SchoolName] >= 85 {
 						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 					}
 				} else {
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
+
+			}
+
+			//Size Preference
+			switch strings.ToLower(user.Size) {
+			case "small":
+				if c.Size < 2000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case "medium":
+				if c.Size > 2000 && c.Size < 10000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case "large":
+				if c.Size > 10000 && c.Size < 15000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case "xlarge":
+				if c.Size > 15000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
 			}
 		}
 	}
 
-	//Size
+	for i, v := range rankColleges {
+		log.Println(i, v)
+	}
 
 	//Location: City/large
 

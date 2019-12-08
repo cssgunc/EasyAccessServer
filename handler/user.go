@@ -12,18 +12,19 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-//UUID set when AuthUser is called
-var UUID string
+var user student
 
 func scoreStudent() int {
 	ctx := context.Background()
-	userInfo, err := client.Collection("users").Doc("xLwd4c1WjKaxG3Vf3GDVMXMTLFE3").Get(ctx)
+	log.Println(user.UID)
+	userInfo, err := client.Collection("users").Doc(user.UID).Get(ctx)
 	if err != nil {
-		// http.Error(err.Error(), 404)
+		log.Println(err)
 	}
 
 	var student student
 	userInfo.DataTo(&student)
+	log.Println("SAT: ", student.SAT, " ACT: ", student.ACT, " GPA: ", student.UnweightedGPA)
 	var potentialScores []string
 	iter := client.Collection("Selectivity").Where("LowGPA", "<=", student.UnweightedGPA).Documents(ctx)
 	for {
@@ -48,6 +49,7 @@ func scoreStudent() int {
 	}
 	topScore := 0
 	for _, score := range potentialScores {
+		log.Println("Potential score: ", score)
 		i, err := strconv.Atoi(score[len(score)-1:])
 		if err != nil {
 			log.Fatalln(err)
@@ -93,6 +95,7 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 404)
 		return
 	}
+	userInfo.DataTo(&user)
 	// outputToken, err := json.Marshal(token)
 	// if err != nil {
 	// 	http.Error(w, err.Error(), 500)
@@ -198,7 +201,7 @@ type student struct {
 	SAT            int      `json:"SAT"`
 	ACT            int      `json:"ACT"`
 	Size           string   `json:"size"`
-	Location       string   `json:"location"`
+	State          string   `json:"state"`
 	Diversity      string   `json:"diversity"`
 	Majors         []string `json:"majors"`
 	Distance       string   `json:"distance"`
