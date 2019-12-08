@@ -498,7 +498,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//scores the student from 1-5
-	score := scoreStudent()
+	score := scoreStudent(queryParams.UID)
 
 	selectivityInfo, err := getCollegeRanges(score)
 	if err != nil {
@@ -872,6 +872,7 @@ type Metadata struct {
 
 // Location = city/large, suburbs/midsize
 type collegeParams struct {
+	UID      string
 	Region   string
 	Majors   []string
 	Location int

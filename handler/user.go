@@ -14,10 +14,10 @@ import (
 
 var user student
 
-func scoreStudent() int {
+func scoreStudent(UID string) int {
 	ctx := context.Background()
 	log.Println(user.UID)
-	userInfo, err := client.Collection("users").Doc(user.UID).Get(ctx)
+	userInfo, err := client.Collection("users").Doc(UID).Get(ctx)
 	if err != nil {
 		log.Println(err)
 	}
