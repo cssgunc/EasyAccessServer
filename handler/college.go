@@ -54,24 +54,6 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 //Takes in query params based on student perferences, delegates tasks to query and sort STR schools
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	// ctx := context.Background()
-	tokenBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	var idToken string
-	err = json.Unmarshal(tokenBody, &idToken)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	_, err = Verify(idToken)
-	if err != nil {
-		log.Printf("error verifying ID token: %v\n", err)
-		http.Error(w, err.Error(), 401)
-		return
-	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -158,8 +140,8 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	var target []CollegeSelectivityInfo
 	var reach []CollegeSelectivityInfo
 	var safety []CollegeSelectivityInfo
-	//2 is lowest score, if target score is 2 can't have safety schools
-	if score != 2 {
+	//FIX: change to 1 after CC fix
+	if score > 2 {
 		var temp info
 		safetyScore := strconv.Itoa(score - 1)
 		log.Println("SafetyScore: ", safetyScore)
