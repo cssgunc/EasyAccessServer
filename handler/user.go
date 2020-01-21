@@ -9,10 +9,26 @@ import (
 	"strconv"
 
 	firestore "cloud.google.com/go/firestore"
+	"firebase.google.com/go/auth"
 	"google.golang.org/api/iterator"
 )
 
 var user student
+
+//Verify user
+func Verify(idToken string) (*auth.Token, error) {
+	ctx := context.Background()
+	auth, err := app.Auth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	if err != nil {
+		return nil, err
+	}
+	return token, nil
+}
 
 func scoreStudent(UID string) int {
 	ctx := context.Background()
@@ -66,73 +82,74 @@ func scoreStudent(UID string) int {
 func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("User Endpoint")
 	ctx := context.Background()
-	body, err := ioutil.ReadAll(r.Body)
+	tokenBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-
-	//change this to firestore token not string
 	var idToken string
-	err = json.Unmarshal(body, &idToken)
+	err = json.Unmarshal(tokenBody, &idToken)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
-	// auth, err := app.Auth(ctx)
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
+	token, err := Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
 
-	// token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
-	// if err != nil {
-	// 	log.Fatalf("error verifying ID token: %v\n", err)
-	// }
-
-	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
+	userInfo, err := client.Collection("users").Doc(token.UID).Get(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
 	}
 	userInfo.DataTo(&user)
-	// outputToken, err := json.Marshal(token)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), 500)
-	// 	return
-	// }
+	outputToken, err := json.Marshal(token)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	// w.Write(outputToken)
+	w.Write(outputToken)
 	w.Write(output)
 	return
 }
 
 func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	// body1, err := ioutil.ReadAll(r.Body)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), 500)
-	// 	return
-	// }
-	// var idToken auth.Token
-	// err = json.Unmarshal(body1, &idToken)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), 500)
-	// 	return
-	// }
+	tokenBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var idToken string
+	err = json.Unmarshal(tokenBody, &idToken)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
-	body2, err := ioutil.ReadAll(r.Body)
+	_, err = Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	var user student
-	err = json.Unmarshal(body2, &user)
+	err = json.Unmarshal(body, &user)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -152,6 +169,24 @@ type updateInfo struct {
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
+	tokenBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var idToken string
+	err = json.Unmarshal(tokenBody, &idToken)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	_, err = Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
