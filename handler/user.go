@@ -94,31 +94,19 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := Verify(idToken)
-	if err != nil {
-		log.Printf("error verifying ID token: %v\n", err)
-		http.Error(w, err.Error(), 401)
-		return
-	}
-
-	userInfo, err := client.Collection("users").Doc(token.UID).Get(ctx)
+	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
 	}
 	userInfo.DataTo(&user)
-	outputToken, err := json.Marshal(token)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Write(outputToken)
+	//w.Write(outputToken)
 	w.Write(output)
 	return
 }

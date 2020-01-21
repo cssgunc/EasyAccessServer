@@ -527,7 +527,6 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 	//major and affordability
 	//requires majors and only shows schools based on affordability algorithm
 	for _, c := range colleges {
-		log.Println("OOOOOO START")
 		//Checks if the school has wanted majors
 		switch len(queryParams.Majors) {
 		case 1:
@@ -547,31 +546,43 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 		//Checks if the school exists in the list of schools that has the wanted majors then sorts
 		if exists {
 			//Affordability sort: Private vs Public then in/out of state then Ability to Pay
+			if c.SchoolName == "Delta State University" {
+				log.Println("Start")
+			}
 			switch c.Ownership {
 			//Public
 			case 1:
-				log.Println("College code", c.State)
-				log.Println("MAP", user.State)
 				//if in-state
 				if c.State == statesMap[user.State] {
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-					log.Println("Public-In state")
+					if c.SchoolName == "Delta State University" {
+						log.Println("Public in state")
+					}
 				} else {
 					//if out-of-state
 					if user.AbilityToPay < 25000 {
+						if c.SchoolName == "Delta State University" {
+							log.Println("ATP < 25000")
+						}
 						if strings.Contains(c.SchoolName, "University of North Carolina at Chapel Hill") || strings.Contains(c.SchoolName, "University of Michigan-Ann Arbor") || strings.Contains(c.SchoolName, "University of Virginia-Main Campus") {
 							rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-							log.Println("Three Schools")
+							if c.SchoolName == "Delta State University" {
+								log.Println("Three colleges")
+							}
 						}
 						//add regional colleges here
 					} else {
-						log.Println("25000 ATP")
+						if c.SchoolName == "Delta State University" {
+							log.Println("ATP > 25000")
+						}
 						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 					}
 				}
 			//Private
 			default:
-				log.Println("Private")
+				if c.SchoolName == "Delta State University" {
+					log.Println("Private")
+				}
 				if user.AbilityToPay <= 6000 {
 					if needMap[c.SchoolName] >= 90 {
 						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
@@ -594,22 +605,18 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 			switch strings.ToLower(queryParams.Size) {
 			case "small":
 				if c.Size < 2000 {
-					log.Println("small")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case "medium":
 				if c.Size > 2000 && c.Size < 10000 {
-					log.Println("medium")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case "large":
 				if c.Size > 10000 && c.Size < 15000 {
-					log.Println("large")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case "xlarge":
 				if c.Size > 15000 {
-					log.Println("XL")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			}
@@ -618,17 +625,14 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 			switch c.Location {
 			case 11, 12, 13:
 				if queryParams.Location == 1 {
-					log.Println("urban")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case 21, 22, 23:
 				if queryParams.Location == 2 {
-					log.Println("suburban")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case 31, 32, 33, 41, 42, 43:
 				if queryParams.Location == 3 {
-					log.Println("rural")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			}
@@ -638,27 +642,23 @@ func sortColleges(colleges []college, queryParams collegeParams) []college {
 			switch {
 			case c.Diversity <= 0.30:
 				if queryParams.Diversity == "less" {
-					log.Println("less")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case c.Diversity <= 0.70 && c.Diversity > 0.30:
 				if queryParams.Diversity == "some" {
-					log.Println("some")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case c.Diversity > 0.70:
 				if queryParams.Diversity == "more" {
-					log.Println("more")
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			}
 		}
-		log.Println("XXX DONE")
 	}
 
-	for i, v := range rankColleges {
-		log.Println(i, v)
-	}
+	// for i, v := range rankColleges {
+	// 	log.Println(i, v)
+	// }
 
 	//use sortedColleges to look up list of actual colleges
 	type kv struct {
