@@ -102,9 +102,9 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//sorts each of the resulting queries based on student preferences
-	safetyResults := sortColleges(safety, queryParams)
-	targetResults := sortColleges(target, queryParams)
-	reachResults := sortColleges(reach, queryParams)
+	safetyResults := sortColleges(safety, queryParams, "safety")
+	targetResults := sortColleges(target, queryParams, "target")
+	reachResults := sortColleges(reach, queryParams, "reach")
 
 	results := SafetyTargetReach{
 		Safety: safetyResults,
@@ -255,7 +255,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	params.Add("school.region_id", queryParams.Region)
 	params.Add("school.degrees_awarded.highest__range", "3..")
-	params.Add("fields", "school.name,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	params.Add("fields", "id,school.name,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
 	//Limited to 100 per page max
 	params.Add("per_page", "100")
 	params.Add("latest.admissions.act_scores.midpoint.cumulative__range", lowAct+".."+highAct)
@@ -313,6 +313,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	for _, c := range scorecardColleges.Results {
 		majors := parseMajors(queryParams, c)
 		temp := college{
+			c.ID,
 			c.SchoolName,
 			c.AvgACT,
 			c.AvgSAT,
@@ -327,6 +328,174 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 		colleges = append(colleges, temp)
 	}
 	return colleges, nil
+}
+
+func checkMajors(c college, queryParams collegeParams) bool {
+	switch len(queryParams.Majors) {
+	case 1:
+		if c.Majors[queryParams.Majors[0]] != 0 {
+			return true
+		}
+	case 2:
+		if c.Majors[queryParams.Majors[0]] != 0 && c.Majors[queryParams.Majors[1]] != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func checkAffordability(c college, queryParams collegeParams) bool {
+	switch c.Ownership {
+	//Public
+	case 1:
+		//if in-state
+		if c.State == statesMap[user.State] {
+			return true
+		}
+		//if out-of-state
+		if user.AbilityToPay < 25000 {
+			if strings.Contains(c.SchoolName, "University of North Carolina at Chapel Hill") || strings.Contains(c.SchoolName, "University of Michigan-Ann Arbor") || strings.Contains(c.SchoolName, "University of Virginia-Main Campus") {
+				return true
+			}
+		} else {
+			return true
+		}
+	//Private
+	default:
+		if user.AbilityToPay <= 6000 {
+			if needMap[c.SchoolName] >= 90 {
+				return true
+			}
+		} else if user.AbilityToPay >= 6000 && user.AbilityToPay <= 10000 {
+			if needMap[c.SchoolName] >= 87 {
+				return true
+			}
+		} else if user.AbilityToPay >= 10000 && user.AbilityToPay <= 15000 {
+			if needMap[c.SchoolName] >= 85 {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	return false
+}
+
+//Sorts the three categories STR into a ranked list based on preferences
+func sortColleges(colleges []college, queryParams collegeParams, rank string) []college {
+	log.Println(rank, len(colleges))
+	//maps "name" to all of the info on that specific college
+	// used to look up college based on name from ranking
+	var collegeDict map[string]college
+	collegeDict = make(map[string]college)
+
+	//maps "name" to sorted rank
+	var rankColleges map[string]int
+	rankColleges = make(map[string]int)
+
+	//in order to limit firestore queries and time
+	//we save needMet of each private school (get this info from client) in a csv file
+	//Will need to automate process for client to be able to upload a new file every year
+	if len(needMap) == 0 {
+		needMap = getSchoolNeedMet()
+	}
+
+	//Maps states to specific code from ScoreCard API
+	if len(statesMap) == 0 {
+		statesMap = getStateCodes()
+	}
+
+	//major and affordability
+	//requires majors and only shows schools based on affordability algorithm
+	for _, c := range colleges {
+
+		hasMajors := checkMajors(c, queryParams)
+		canAfford := checkAffordability(c, queryParams)
+
+		//Checks if the school exists in the list of schools that has the wanted majors then sorts
+		if hasMajors && canAfford {
+			collegeDict[c.SchoolName] = c
+			//Size Preference
+			switch strings.ToLower(queryParams.Size) {
+			case "small":
+				if c.Size < 2000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case "medium":
+				if c.Size > 2000 && c.Size < 10000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case "large":
+				if c.Size > 10000 && c.Size < 15000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case "xlarge":
+				if c.Size > 15000 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			}
+
+			//Location Preference  FIND OUT WHAT THEY WANT AND FIX THIS
+			switch c.Location {
+			case 11, 12, 13:
+				if queryParams.Location == 1 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case 21, 22, 23:
+				if queryParams.Location == 2 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case 31, 32, 33, 41, 42, 43:
+				if queryParams.Location == 3 {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			}
+
+			//Diversity latest.student.demographics.race_ethnicity.white
+			c.Diversity = 1 - c.Diversity
+			switch {
+			case c.Diversity <= 0.30:
+				if queryParams.Diversity == "less" {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case c.Diversity <= 0.70 && c.Diversity > 0.30:
+				if queryParams.Diversity == "some" {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			case c.Diversity > 0.70:
+				if queryParams.Diversity == "more" {
+					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
+				}
+			}
+		}
+	}
+
+	// for i, v := range rankColleges {
+	// 	log.Println(i, v)
+	// }
+
+	//use sortedColleges to look up list of actual colleges
+	type kv struct {
+		Key   string
+		Value int
+	}
+
+	var sortedColleges []kv
+	for k, v := range rankColleges {
+		sortedColleges = append(sortedColleges, kv{k, v})
+	}
+
+	sort.Slice(sortedColleges, func(i, j int) bool {
+		return sortedColleges[i].Value > sortedColleges[j].Value
+	})
+
+	var finalSort []college
+	finalSort = make([]college, len(rankColleges))
+	for i, kv := range sortedColleges {
+		finalSort[i] = collegeDict[kv.Key]
+	}
+
+	return finalSort
 }
 
 //Gets the percentage of people at a college that are doing the prefered major.
@@ -497,193 +666,6 @@ func parseMajors(queryParams collegeParams, college Result) map[string]float32 {
 	return temp
 }
 
-//Sorts the three categories STR into a ranked list based on preferences
-func sortColleges(colleges []college, queryParams collegeParams) []college {
-	//maps "name" to all of the info on that specific college
-	// used to look up college based on name from ranking
-	var collegeDict map[string]college
-	collegeDict = make(map[string]college)
-
-	//maps "name" to sorted rank
-	var rankColleges map[string]int
-	rankColleges = make(map[string]int)
-
-	//List of only colleges that have selected major/majors
-	var majorColleges map[string]int
-	majorColleges = make(map[string]int)
-
-	//in order to limit firestore queries and time
-	//we save needMet of each private school (get this info from client) in a csv file
-	//Will need to automate process for client to be able to upload a new file every year
-	if len(needMap) == 0 {
-		needMap = getSchoolNeedMet()
-	}
-
-	//Maps states to specific code from ScoreCard API
-	if len(statesMap) == 0 {
-		statesMap = getStateCodes()
-	}
-
-	//major and affordability
-	//requires majors and only shows schools based on affordability algorithm
-	for _, c := range colleges {
-		//Checks if the school has wanted majors
-		switch len(queryParams.Majors) {
-		case 1:
-			if c.Majors[queryParams.Majors[0]] != 0 {
-				majorColleges[c.SchoolName] = majorColleges[c.SchoolName] + 1
-				collegeDict[c.SchoolName] = c
-			}
-		case 2:
-			if c.Majors[queryParams.Majors[0]] != 0 && c.Majors[queryParams.Majors[1]] != 0 {
-				majorColleges[c.SchoolName] = majorColleges[c.SchoolName] + 1
-				collegeDict[c.SchoolName] = c
-			}
-		}
-		//if the college has the desired majors
-		_, exists := majorColleges[c.SchoolName]
-
-		//Checks if the school exists in the list of schools that has the wanted majors then sorts
-		if exists {
-			//Affordability sort: Private vs Public then in/out of state then Ability to Pay
-			if c.SchoolName == "Delta State University" {
-				log.Println("Start")
-			}
-			switch c.Ownership {
-			//Public
-			case 1:
-				//if in-state
-				if c.State == statesMap[user.State] {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-					if c.SchoolName == "Delta State University" {
-						log.Println("Public in state")
-					}
-				} else {
-					//if out-of-state
-					if user.AbilityToPay < 25000 {
-						if c.SchoolName == "Delta State University" {
-							log.Println("ATP < 25000")
-						}
-						if strings.Contains(c.SchoolName, "University of North Carolina at Chapel Hill") || strings.Contains(c.SchoolName, "University of Michigan-Ann Arbor") || strings.Contains(c.SchoolName, "University of Virginia-Main Campus") {
-							rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-							if c.SchoolName == "Delta State University" {
-								log.Println("Three colleges")
-							}
-						}
-						//add regional colleges here
-					} else {
-						if c.SchoolName == "Delta State University" {
-							log.Println("ATP > 25000")
-						}
-						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-					}
-				}
-			//Private
-			default:
-				if c.SchoolName == "Delta State University" {
-					log.Println("Private")
-				}
-				if user.AbilityToPay <= 6000 {
-					if needMap[c.SchoolName] >= 90 {
-						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-					}
-				} else if user.AbilityToPay >= 6000 && user.AbilityToPay <= 10000 {
-					if needMap[c.SchoolName] >= 87 {
-						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-					}
-				} else if user.AbilityToPay >= 10000 && user.AbilityToPay <= 15000 {
-					if needMap[c.SchoolName] >= 85 {
-						rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-					}
-				} else {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-
-			}
-
-			//Size Preference
-			switch strings.ToLower(queryParams.Size) {
-			case "small":
-				if c.Size < 2000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case "medium":
-				if c.Size > 2000 && c.Size < 10000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case "large":
-				if c.Size > 10000 && c.Size < 15000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case "xlarge":
-				if c.Size > 15000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			}
-
-			//Location Preference  FIND OUT WHAT THEY WANT AND FIX THIS
-			switch c.Location {
-			case 11, 12, 13:
-				if queryParams.Location == 1 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case 21, 22, 23:
-				if queryParams.Location == 2 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case 31, 32, 33, 41, 42, 43:
-				if queryParams.Location == 3 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			}
-
-			//Diversity latest.student.demographics.race_ethnicity.white
-			c.Diversity = 1 - c.Diversity
-			switch {
-			case c.Diversity <= 0.30:
-				if queryParams.Diversity == "less" {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case c.Diversity <= 0.70 && c.Diversity > 0.30:
-				if queryParams.Diversity == "some" {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case c.Diversity > 0.70:
-				if queryParams.Diversity == "more" {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			}
-		}
-	}
-
-	// for i, v := range rankColleges {
-	// 	log.Println(i, v)
-	// }
-
-	//use sortedColleges to look up list of actual colleges
-	type kv struct {
-		Key   string
-		Value int
-	}
-
-	var sortedColleges []kv
-	for k, v := range rankColleges {
-		sortedColleges = append(sortedColleges, kv{k, v})
-	}
-
-	sort.Slice(sortedColleges, func(i, j int) bool {
-		return sortedColleges[i].Value > sortedColleges[j].Value
-	})
-
-	var finalSort []college
-	finalSort = make([]college, len(rankColleges))
-	for i, kv := range sortedColleges {
-		finalSort[i] = collegeDict[kv.Key]
-	}
-
-	return finalSort
-}
-
 func getSchoolNeedMet() map[string]int {
 	file, err := os.Open("handler/school.csv")
 	if err != nil {
@@ -772,6 +754,7 @@ type ScoreCardResponse struct {
 
 // Result structure
 type Result struct {
+	ID                                int32   `json:"id"`
 	SchoolName                        string  `json:"school.name"`
 	AvgACT                            float32 `json:"latest.admissions.act_scores.midpoint.cumulative"`
 	AvgSAT                            float32 `json:"latest.admissions.sat_scores.average.overall"`
@@ -822,6 +805,7 @@ type Result struct {
 }
 
 type college struct {
+	ID             int32
 	SchoolName     string
 	AvgACT         float32
 	AvgSAT         float32
