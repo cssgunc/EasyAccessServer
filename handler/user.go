@@ -99,7 +99,13 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 404)
 		return
 	}
+
 	userInfo.DataTo(&user)
+
+	//TODO output pastMatches to frontend
+	pastMatches := loadUserMatches()
+	log.Println(pastMatches)
+
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
 		http.Error(w, err.Error(), 500)

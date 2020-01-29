@@ -11,14 +11,18 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+
+	firestore "cloud.google.com/go/firestore"
+	"github.com/mitchellh/mapstructure"
 )
 
-//var wg sync.WaitGroup
+var wg sync.WaitGroup
 var needMap map[string]int
 var statesMap map[string]int
 
@@ -53,7 +57,7 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 
 //Takes in query params based on student perferences, delegates tasks to query and sort STR schools
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
-	// ctx := context.Background()
+	ctx := context.Background()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -102,14 +106,40 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//sorts each of the resulting queries based on student preferences
-	safetyResults := sortColleges(safety, queryParams, "safety")
-	targetResults := sortColleges(target, queryParams, "target")
-	reachResults := sortColleges(reach, queryParams, "reach")
+	safetyResults, safetyIDs := sortColleges(safety, queryParams, "safety")
+	targetResults, targetIDs := sortColleges(target, queryParams, "target")
+	reachResults, reachIDs := sortColleges(reach, queryParams, "reach")
 
 	results := SafetyTargetReach{
 		Safety: safetyResults,
 		Target: targetResults,
 		Reach:  reachResults,
+	}
+	resultIDs := SafetyTargetReachIDs{
+		Safety: safetyIDs,
+		Target: targetIDs,
+		Reach:  reachIDs,
+	}
+
+	resultsInfo := []firestore.Update{{
+		Path:  "results",
+		Value: resultIDs,
+	}}
+	majorsInfo := []firestore.Update{{
+		Path:  "majors",
+		Value: queryParams.Majors,
+	}}
+
+	userRef := client.Collection("users").Doc(user.UID)
+	_, err = userRef.Update(ctx, resultsInfo)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+	_, err = userRef.Update(ctx, majorsInfo)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
 	}
 
 	output, err := json.Marshal(results)
@@ -311,7 +341,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	//converts results into type: College for rest of algorithm
 	var colleges []college
 	for _, c := range scorecardColleges.Results {
-		majors := parseMajors(queryParams, c)
+		majors := parseMajors(queryParams.Majors, c)
 		temp := college{
 			c.ID,
 			c.SchoolName,
@@ -382,7 +412,7 @@ func checkAffordability(c college, queryParams collegeParams) bool {
 }
 
 //Sorts the three categories STR into a ranked list based on preferences
-func sortColleges(colleges []college, queryParams collegeParams, rank string) []college {
+func sortColleges(colleges []college, queryParams collegeParams, rank string) ([]college, []int32) {
 	log.Println(rank, len(colleges))
 	//maps "name" to all of the info on that specific college
 	// used to look up college based on name from ranking
@@ -489,22 +519,24 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string) []
 		return sortedColleges[i].Value > sortedColleges[j].Value
 	})
 
+	var finalIDs []int32
 	var finalSort []college
 	finalSort = make([]college, len(rankColleges))
 	for i, kv := range sortedColleges {
+		finalIDs = append(finalIDs, collegeDict[kv.Key].ID)
 		finalSort[i] = collegeDict[kv.Key]
 	}
 
-	return finalSort
+	return finalSort, finalIDs
 }
 
 //Gets the percentage of people at a college that are doing the prefered major.
 //Used to see if the major a student wants is offered at the college or not
 //Hard coded for now because scorecard doesnt have a good way to get majors yet...
-func parseMajors(queryParams collegeParams, college Result) map[string]float32 {
+func parseMajors(majors []string, college Result) map[string]float32 {
 	var temp map[string]float32
 	temp = make(map[string]float32)
-	switch queryParams.Majors[0] {
+	switch majors[0] {
 	case "ariculture":
 		temp["agricuture"] = college.Agriculture
 	case "resources":
@@ -583,8 +615,8 @@ func parseMajors(queryParams collegeParams, college Result) map[string]float32 {
 		temp["history"] = college.History
 	}
 
-	if len(queryParams.Majors) == 2 {
-		switch queryParams.Majors[1] {
+	if len(majors) == 2 {
+		switch majors[1] {
 		case "ariculture":
 			temp["agricuture"] = college.Agriculture
 		case "resources":
@@ -712,6 +744,141 @@ func getStateCodes() map[string]int {
 	return m
 }
 
+func loadUserMatches() SafetyTargetReach {
+	ctx := context.Background()
+	docsnap, err := client.Collection("users").Doc(user.UID).Get(ctx)
+
+	matchesData, err := docsnap.DataAt("results")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var matches SafetyTargetReachIDs
+	mapstructure.Decode(matchesData, &matches)
+
+	majorsData, err := docsnap.DataAt("majors")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var majors []string
+	mapstructure.Decode(majorsData, &majors)
+
+	//TODO GO ROUTINES HERE
+	c1 := make(chan []college)
+	c2 := make(chan []college)
+	c3 := make(chan []college)
+
+	wg.Add(1)
+	go queryCollegesByID(matches.Safety, majors, c1)
+
+	wg.Add(1)
+	go queryCollegesByID(matches.Target, majors, c2)
+
+	wg.Add(1)
+	go queryCollegesByID(matches.Reach, majors, c3)
+
+	safety := <-c1
+	target := <-c2
+	reach := <-c3
+
+	wg.Wait()
+
+	Temp := SafetyTargetReach{
+		Safety: safety,
+		Target: target,
+		Reach:  reach,
+	}
+	return Temp
+}
+
+func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]college, error) {
+
+	baseURL, err := url.Parse("https://api.data.gov/ed/collegescorecard/v1/schools?")
+	if err != nil {
+		return nil, err
+	}
+	stringIDs := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(ids)), ","), "[]")
+
+	majorString := ""
+	for _, major := range majors {
+		majorString = majorString + ",latest.academics.program_percentage." + major
+	}
+
+	// Prepare Query Parameters
+	params := url.Values{}
+	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
+	params.Add("id", stringIDs)
+	params.Add("fields", "id,school.name,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	//Limited to 100 per page max
+	params.Add("per_page", "100")
+
+	// Add Query Parameters to the URL
+	baseURL.RawQuery = params.Encode() // Escape Query Parameters
+	response, err := http.Get(baseURL.String())
+	if err != nil {
+		return nil, err
+	}
+
+	resBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var scorecardColleges ScoreCardResponse
+	err = json.Unmarshal(resBody, &scorecardColleges)
+	if err != nil {
+		return nil, err
+	}
+
+	//gets total amount of pages from metadata
+	totalPages := math.Ceil(float64(scorecardColleges.Metadata.Total) / float64(scorecardColleges.Metadata.PerPage))
+	//loops through remaining pages and takes in results and addes them to our array of colleges
+	for i := 1; i < int(totalPages); i++ {
+		a := strconv.Itoa(i)
+		params.Add("page", ""+a)
+		baseURL.RawQuery = params.Encode()
+		response, err := http.Get(baseURL.String())
+		if err != nil {
+			return nil, err
+		}
+
+		resBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var tempColleges ScoreCardResponse
+		err = json.Unmarshal(resBody, &tempColleges)
+		if err != nil {
+			return nil, err
+		}
+		scorecardColleges.Results = append(scorecardColleges.Results, tempColleges.Results...)
+	}
+	//converts results into type: College for rest of algorithm
+	var colleges []college
+	for _, c := range scorecardColleges.Results {
+		majors := parseMajors(majors, c)
+		temp := college{
+			c.ID,
+			c.SchoolName,
+			c.AvgACT,
+			c.AvgSAT,
+			c.AdmissionsRate,
+			c.Size,
+			c.Location,
+			c.Diversity,
+			c.State,
+			c.Ownership,
+			majors,
+		}
+		colleges = append(colleges, temp)
+	}
+	if c != nil {
+		c <- colleges
+		wg.Done()
+	}
+	return colleges, nil
+}
+
 type rank struct {
 	School college
 	rank   int
@@ -724,12 +891,12 @@ type SafetyTargetReach struct {
 	Reach  []college
 }
 
-// //CollegeSelectivityInfo structure
-// type CollegeSelectivityInfo struct {
-// 	ACT  []int `json:"act"`
-// 	SAT  []int `json:"sat"`
-// 	Rate int   `json:"rate"`
-// }
+//SafetyTargetReachIDs structure
+type SafetyTargetReachIDs struct {
+	Safety []int32
+	Target []int32
+	Reach  []int32
+}
 
 //CollegeSelectivityInfo structure
 type CollegeSelectivityInfo struct {
