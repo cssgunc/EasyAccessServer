@@ -104,7 +104,12 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 
 	//TODO output pastMatches to frontend
 	pastMatches := loadUserMatches()
-	log.Println(pastMatches)
+
+	outputMatches, err := json.Marshal(pastMatches)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
@@ -112,7 +117,7 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	//w.Write(outputToken)
+	w.Write(outputMatches)
 	w.Write(output)
 	return
 }
