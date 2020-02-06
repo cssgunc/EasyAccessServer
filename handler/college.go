@@ -146,7 +146,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	if score <= 2 {
 		safety = append(safety, ccSafety...)
 		target = append(target, ccTarget...)
-		log.Println("CCTARGET", ccTarget)
 	} else {
 		safety = append(safety, ccSafety...)
 	}
@@ -176,7 +175,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		Value: queryParams.Majors,
 	}}
 
-	userRef := client.Collection("users").Doc(user.UID)
+	userRef := client.Collection("userMatches").Doc(user.UID)
 	_, err = userRef.Update(ctx, resultsInfo)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
@@ -203,7 +202,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	ctx := context.Background()
 	reachScore := strconv.Itoa(score + 1)
-	log.Println("ReachScore: ", reachScore)
 	reachInfo, err := client.Collection("Selectivity").Doc(reachScore).Get(ctx)
 	if err != nil {
 		return nil, err
@@ -247,7 +245,6 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	if score > 2 {
 		var temp info
 		safetyScore := strconv.Itoa(score - 1)
-		log.Println("SafetyScore: ", safetyScore)
 		safetyInfo, err := client.Collection("Selectivity").Doc(safetyScore).Get(ctx)
 		if err != nil {
 			return nil, err
@@ -329,7 +326,6 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	params.Add("school.region_id", queryParams.Region)
 	if ccSearch {
-		log.Println("CCSEARCHING")
 		params.Add("school.carnegie_basic__range", "..14")
 		params.Add("school.state_fips", strconv.Itoa(statesMap[user.State]))
 		if getAllResults {
@@ -355,7 +351,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 
 	// Add Query Parameters to the URL
 	baseURL.RawQuery = params.Encode() // Escape Query Parameters
-	log.Printf("Encoded URL is %q\n", baseURL.String())
+	//log.Printf("Encoded URL is %q\n", baseURL.String())
 	response, err := http.Get(baseURL.String())
 	if err != nil {
 		return nil, err
@@ -371,14 +367,11 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	if err != nil {
 		return nil, err
 	}
-	log.Println("total: ", scorecardColleges.Metadata.Total)
-	log.Println("page: ", scorecardColleges.Metadata.Page)
 
 	var totalPages float64
 	//only need top two CC results for safety just get one page
 	//gets total amount of pages from metadata
 	totalPages = math.Ceil(float64(scorecardColleges.Metadata.Total) / float64(scorecardColleges.Metadata.PerPage))
-	log.Println("totalPages: ", totalPages)
 
 	//loops through remaining pages and takes in results and addes them to our array of colleges
 	for i := 1; i < int(totalPages); i++ {
@@ -480,7 +473,6 @@ func checkAffordability(c college, queryParams collegeParams) bool {
 
 //Sorts the three categories STR into a ranked list based on preferences
 func sortColleges(colleges []college, queryParams collegeParams, rank string) ([]college, []int32) {
-	log.Println(rank, len(colleges))
 	//maps "name" to all of the info on that specific college
 	// used to look up college based on name from ranking
 	var collegeDict map[string]college
@@ -556,25 +548,17 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string) ([
 			//Diversity latest.student.demographics.race_ethnicity.white
 			c.Diversity = 1 - c.Diversity
 			switch {
-			case c.Diversity <= 0.30:
-				if queryParams.Diversity == "less" {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case c.Diversity <= 0.70 && c.Diversity > 0.30:
+			case c.Diversity >= 0.20:
 				if queryParams.Diversity == "some" {
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
-			case c.Diversity > 0.70:
+			case c.Diversity > 0.30:
 				if queryParams.Diversity == "more" {
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			}
 		}
 	}
-
-	// for i, v := range rankColleges {
-	// 	log.Println(i, v)
-	// }
 
 	//use sortedColleges to look up list of actual colleges
 	type kv struct {
@@ -818,7 +802,8 @@ func getStateCodes() map[string]int {
 
 func loadUserMatches() SafetyTargetReach {
 	ctx := context.Background()
-	docsnap, err := client.Collection("users").Doc(user.UID).Get(ctx)
+	log.Println(user.UID)
+	docsnap, err := client.Collection("userMatches").Doc(user.UID).Get(ctx)
 
 	matchesData, err := docsnap.DataAt("results")
 	if err != nil {
