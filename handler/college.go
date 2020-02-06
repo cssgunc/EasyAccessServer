@@ -79,30 +79,76 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("bad SelectivityInfo ", err)
 		return
 	}
+
+	var ccTarget []college
+	var ccSafety []college
+
+	//TODO: switch to go routines
+	//TODO: Make these ranges rather than lat long distance
+	if score == 1 {
+		temp, err := queryColleges(nil, queryParams, nil, true, true)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		ccTarget = append(ccTarget, temp...)
+	} else if score == 2 {
+		temp, err := queryColleges(nil, queryParams, nil, true, true)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		ccSafety = append(ccSafety, temp...)
+	} else if user.UnweightedGPA <= 2.5 || user.ACT <= 17 || user.SAT <= 880 {
+		//TODO Only take colleges within 25 miles
+		temp, err := queryColleges(nil, queryParams, nil, true, false)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		ccSafety = append(ccSafety, temp...)
+	} else if user.UnweightedGPA <= 3.25 || user.ACT <= 18 || user.SAT <= 950 {
+		//TODO Only take colleges within 25 miles
+		temp, err := queryColleges(nil, queryParams, nil, true, false)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		ccSafety = append(ccSafety, temp...)
+	}
+
 	//takes each of the STR info ranges and querys college scorecard API
 	var safety []college
 	for _, v := range selectivityInfo[0] {
-		temp, err := queryColleges(&v, queryParams, nil)
+		temp, err := queryColleges(&v, queryParams, nil, false, true)
 		if err != nil {
-
+			log.Fatalln(err)
 		}
 		safety = append(safety, temp...)
 	}
 	var target []college
 	for _, v := range selectivityInfo[1] {
-		temp, err := queryColleges(&v, queryParams, nil)
+		temp, err := queryColleges(&v, queryParams, nil, false, true)
 		if err != nil {
-
+			log.Fatalln(err)
 		}
 		target = append(target, temp...)
 	}
 	var reach []college
 	for _, v := range selectivityInfo[2] {
-		temp, err := queryColleges(&v, queryParams, nil)
+		temp, err := queryColleges(&v, queryParams, nil, false, true)
 		if err != nil {
-
+			log.Fatalln(err)
 		}
 		reach = append(reach, temp...)
+	}
+
+	//adds CC results to be sorted
+	//TODO NEXT STEP might have to sort CC by them selves to get two closest
+	//Then appen them onto safetyResults
+	//Unless student is 4 or 5 since all of the colleges in S or T will be CC
+	if score <= 2 {
+		safety = append(safety, ccSafety...)
+		target = append(target, ccTarget...)
+		log.Println("CCTARGET", ccTarget)
+	} else {
+		safety = append(safety, ccSafety...)
 	}
 
 	//sorts each of the resulting queries based on student preferences
@@ -156,11 +202,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 //Gets the highest and lowest possible score for each range to cut down on colleges returned from Scorecard
 func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	ctx := context.Background()
-	targetScore := strconv.Itoa(score)
-	targetInfo, err := client.Collection("Selectivity").Doc(targetScore).Get(ctx)
-	if err != nil {
-		return nil, err
-	}
 	reachScore := strconv.Itoa(score + 1)
 	log.Println("ReachScore: ", reachScore)
 	reachInfo, err := client.Collection("Selectivity").Doc(reachScore).Get(ctx)
@@ -170,7 +211,39 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	var target []CollegeSelectivityInfo
 	var reach []CollegeSelectivityInfo
 	var safety []CollegeSelectivityInfo
-	//FIX: change to 1 after CC fix
+	var targetInfo *firestore.DocumentSnapshot
+	if score > 1 {
+		targetScore := strconv.Itoa(score)
+		targetInfo, err = client.Collection("Selectivity").Doc(targetScore).Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		var tempTarget info
+		targetInfo.DataTo(&tempTarget)
+		for _, info := range tempTarget.Info {
+			str := strings.Split(info, ",")
+			lACT, err := strconv.Atoi(str[0])
+			hACT, err := strconv.Atoi(str[1])
+			lSAT, err := strconv.Atoi(str[2])
+			hSAT, err := strconv.Atoi(str[3])
+			lRate, err := strconv.ParseFloat(str[4], 32)
+			hRate, err := strconv.ParseFloat(str[5], 32)
+			if err != nil {
+				return nil, err
+			}
+			targetSelectivity := CollegeSelectivityInfo{
+				Score:    score - 1,
+				lowACT:   lACT,
+				highACT:  hACT,
+				lowSAT:   lSAT,
+				highSAT:  hSAT,
+				lowRate:  lRate,
+				highRate: hRate,
+			}
+			target = append(target, targetSelectivity)
+		}
+	}
 	if score > 2 {
 		var temp info
 		safetyScore := strconv.Itoa(score - 1)
@@ -204,31 +277,6 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 		}
 	}
 
-	var tempTarget info
-	targetInfo.DataTo(&tempTarget)
-	for _, info := range tempTarget.Info {
-		str := strings.Split(info, ",")
-		lACT, err := strconv.Atoi(str[0])
-		hACT, err := strconv.Atoi(str[1])
-		lSAT, err := strconv.Atoi(str[2])
-		hSAT, err := strconv.Atoi(str[3])
-		lRate, err := strconv.ParseFloat(str[4], 32)
-		hRate, err := strconv.ParseFloat(str[5], 32)
-		if err != nil {
-			return nil, err
-		}
-		targetSelectivity := CollegeSelectivityInfo{
-			Score:    score - 1,
-			lowACT:   lACT,
-			highACT:  hACT,
-			lowSAT:   lSAT,
-			highSAT:  hSAT,
-			lowRate:  lRate,
-			highRate: hRate,
-		}
-		target = append(target, targetSelectivity)
-	}
-
 	var tempReach info
 	reachInfo.DataTo(&tempReach)
 	for _, info := range tempReach.Info {
@@ -260,7 +308,11 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 }
 
 //Querys college scorecard API for each STR
-func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeParams, c chan []college) ([]college, error) {
+func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeParams, c chan []college, ccSearch bool, getAllResults bool) ([]college, error) {
+
+	if len(statesMap) == 0 {
+		statesMap = getStateCodes()
+	}
 
 	baseURL, err := url.Parse("https://api.data.gov/ed/collegescorecard/v1/schools?")
 	if err != nil {
@@ -271,26 +323,35 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	for _, major := range queryParams.Majors {
 		majorString = majorString + ",latest.academics.program_percentage." + major
 	}
-	//sets ranges of possible scores to limit query, Takes lowest and highest of each data point from STR
-	lowAct := strconv.Itoa(selectivityInfo.lowACT)
-	highAct := strconv.Itoa(selectivityInfo.highACT)
-	lowSat := strconv.Itoa(selectivityInfo.lowSAT)
-	highSat := strconv.Itoa(selectivityInfo.highSAT)
-	lowRate := strconv.FormatFloat(selectivityInfo.lowRate, 'f', 1, 64)
-	highRate := strconv.FormatFloat(selectivityInfo.highRate, 'f', 1, 64)
-	log.Println("XXX", lowRate, highRate)
 
 	// Prepare Query Parameters
 	params := url.Values{}
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	params.Add("school.region_id", queryParams.Region)
-	params.Add("school.degrees_awarded.highest__range", "3..")
-	params.Add("fields", "id,school.name,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	if ccSearch {
+		log.Println("CCSEARCHING")
+		params.Add("school.carnegie_basic__range", "..14")
+		params.Add("school.state_fips", strconv.Itoa(statesMap[user.State]))
+		if getAllResults {
+			params.Add("zip", user.Zip)
+			params.Add("distance", "25mi")
+		}
+	} else {
+		//sets ranges of possible scores to limit query, Takes lowest and highest of each data point from STR
+		lowAct := strconv.Itoa(selectivityInfo.lowACT)
+		highAct := strconv.Itoa(selectivityInfo.highACT)
+		lowSat := strconv.Itoa(selectivityInfo.lowSAT)
+		highSat := strconv.Itoa(selectivityInfo.highSAT)
+		lowRate := strconv.FormatFloat(selectivityInfo.lowRate, 'f', 1, 64)
+		highRate := strconv.FormatFloat(selectivityInfo.highRate, 'f', 1, 64)
+		params.Add("school.carnegie_basic__range", "14..")
+		params.Add("latest.admissions.act_scores.midpoint.cumulative__range", lowAct+".."+highAct)
+		params.Add("latest.admissions.admission_rate.overall__range", lowRate+".."+highRate)
+		params.Add("latest.admissions.sat_scores.average.overall__range", lowSat+".."+highSat)
+	}
+	params.Add("fields", "id,location.lat,location.lon,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
 	//Limited to 100 per page max
 	params.Add("per_page", "100")
-	params.Add("latest.admissions.act_scores.midpoint.cumulative__range", lowAct+".."+highAct)
-	params.Add("latest.admissions.admission_rate.overall__range", lowRate+".."+highRate)
-	params.Add("latest.admissions.sat_scores.average.overall__range", lowSat+".."+highSat)
 
 	// Add Query Parameters to the URL
 	baseURL.RawQuery = params.Encode() // Escape Query Parameters
@@ -313,9 +374,12 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	log.Println("total: ", scorecardColleges.Metadata.Total)
 	log.Println("page: ", scorecardColleges.Metadata.Page)
 
+	var totalPages float64
+	//only need top two CC results for safety just get one page
 	//gets total amount of pages from metadata
-	totalPages := math.Ceil(float64(scorecardColleges.Metadata.Total) / float64(scorecardColleges.Metadata.PerPage))
+	totalPages = math.Ceil(float64(scorecardColleges.Metadata.Total) / float64(scorecardColleges.Metadata.PerPage))
 	log.Println("totalPages: ", totalPages)
+
 	//loops through remaining pages and takes in results and addes them to our array of colleges
 	for i := 1; i < int(totalPages); i++ {
 		a := strconv.Itoa(i)
@@ -345,11 +409,14 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 		temp := college{
 			c.ID,
 			c.SchoolName,
+			c.CIPCode,
 			c.AvgACT,
 			c.AvgSAT,
 			c.AdmissionsRate,
 			c.Size,
 			c.Location,
+			c.Lat,
+			c.Long,
 			c.Diversity,
 			c.State,
 			c.Ownership,
@@ -391,7 +458,7 @@ func checkAffordability(c college, queryParams collegeParams) bool {
 			return true
 		}
 	//Private
-	default:
+	case 2:
 		if user.AbilityToPay <= 6000 {
 			if needMap[c.SchoolName] >= 90 {
 				return true
@@ -439,8 +506,13 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string) ([
 	//requires majors and only shows schools based on affordability algorithm
 	for _, c := range colleges {
 
-		hasMajors := checkMajors(c, queryParams)
-		canAfford := checkAffordability(c, queryParams)
+		var hasMajors = true
+		var canAfford = true
+
+		if c.CIPCode >= 14 {
+			hasMajors = checkMajors(c, queryParams)
+			canAfford = checkAffordability(c, queryParams)
+		}
 
 		//Checks if the school exists in the list of schools that has the wanted majors then sorts
 		if hasMajors && canAfford {
@@ -807,7 +879,7 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 	params := url.Values{}
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	params.Add("id", stringIDs)
-	params.Add("fields", "id,school.name,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	params.Add("fields", "id,location.lat,location.lon,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
 	//Limited to 100 per page max
 	params.Add("per_page", "100")
 
@@ -860,11 +932,14 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 		temp := college{
 			c.ID,
 			c.SchoolName,
+			c.CIPCode,
 			c.AvgACT,
 			c.AvgSAT,
 			c.AdmissionsRate,
 			c.Size,
 			c.Location,
+			c.Lat,
+			c.Long,
 			c.Diversity,
 			c.State,
 			c.Ownership,
@@ -877,6 +952,34 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 		wg.Done()
 	}
 	return colleges, nil
+}
+
+// haversin(θ) function
+func hsin(theta float64) float64 {
+	return math.Pow(math.Sin(theta/2), 2)
+}
+
+// Distance function returns the distance (in meters) between two points of
+//     a given longitude and latitude relatively accurately (using a spherical
+//     approximation of the Earth) through the Haversin Distance Formula for
+//     great arc distance on a sphere with accuracy for small distances
+//
+// point coordinates are supplied in degrees and converted into rad. in the func
+//
+// distance returned is METERS!!!!!!
+// http://en.wikipedia.org/wiki/Haversine_formula
+func Distance(lat1, lon1, lat2, lon2 float64) float64 {
+	// convert to radians
+	// must cast radius as float to multiply later
+	var la1, lo1, la2, lo2, r float64
+	la1 = lat1 * math.Pi / 180
+	lo1 = lon1 * math.Pi / 180
+	la2 = lat2 * math.Pi / 180
+	lo2 = lon2 * math.Pi / 180
+	r = 6378100 // Earth radius in METERS
+	// calculate
+	h := hsin(la2-la1) + math.Cos(la1)*math.Cos(la2)*hsin(lo2-lo1)
+	return 2 * r * math.Asin(math.Sqrt(h))
 }
 
 type rank struct {
@@ -923,11 +1026,14 @@ type ScoreCardResponse struct {
 type Result struct {
 	ID                                int32   `json:"id"`
 	SchoolName                        string  `json:"school.name"`
+	CIPCode                           int32   `json:"school.carnegie_basic"`
 	AvgACT                            float32 `json:"latest.admissions.act_scores.midpoint.cumulative"`
 	AvgSAT                            float32 `json:"latest.admissions.sat_scores.average.overall"`
 	AdmissionsRate                    float32 `json:"latest.admissions.admission_rate.overall"`
 	Size                              int     `json:"latest.student.size"`
 	Location                          int     `json:"school.locale"`
+	Lat                               float64 `json:"location.lat"`
+	Long                              float64 `json:"location.lon"`
 	Diversity                         float32 `json:"latest.student.demographics.race_ethnicity.white"`
 	State                             int     `json:"school.state_fips"`
 	Ownership                         int     `json:"school.ownership"`
@@ -974,11 +1080,14 @@ type Result struct {
 type college struct {
 	ID             int32
 	SchoolName     string
+	CIPCode        int32
 	AvgACT         float32
 	AvgSAT         float32
 	AdmissionsRate float32
 	Size           int
 	Location       int
+	Lat            float64
+	Long           float64
 	Diversity      float32
 	State          int
 	Ownership      int
