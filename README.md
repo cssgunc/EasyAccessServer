@@ -116,33 +116,18 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 # Http Requests
 ```bash
-/user - POST request.body(idToken from firebase.auth.signinwithEmailandPasword)
-	you will get back a student struct
+/user - POST 
+	Body
+		(idToken from firebase.auth.signinwithEmailandPasword)
+	Response
+		Student{}
 /addUserInfo - POST 
-	type student struct {
-	UID            string   `json:"uid"`
-	FirstName      string   `json:"firstname"`
-	LastName       string   `json:"lastname"`
-	Email          string   `json:"email"`
-	SchoolCode     string   `json:"schoolCode"`
-	GraduationYear string   `json:"graduationYear"`
-	WeightedGPA    float32  `json:"weightedGpa"`
-	UnweightedGPA  float32  `json:"unweightedGpa"`
-	ClassRank      int      `json:"classRank"`
-	SAT            int      `json:"SAT"`
-	ACT            int      `json:"ACT"`
-	Size           string   `json:"size"`
-	Location       string   `json:"location"`
-	Diversity      string   `json:"diversity"`
-	Majors         []string `json:"majors"`
-	Distance       string   `json:"distance"`
-	Zip            string   `json:"zip"`
-	}
-/colleges - GET no body
-  	you will get back all colleges
+	type student struct {}
 /majors - GET no body
-	get back an array of strings
-/collegeMatches - POST request.body
+	Response
+		[]string
+/collegeMatches - POST
+	Body
 		type collegeParams struct {
 			ZIP      string `json:"ZIP"`
 			State    string
@@ -150,14 +135,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			Majors   []string
 			Location int
 		}
-  	you will get back
+	Response
 		type SafetyTargetReach struct {
-			Safety []Result
-			Target []Result
-			Reach  []Result
+			Safety []college
+			Target []college
+			Reach  []college
 		}
+
 /updateUser - PATCH request
-	Body = 
+	Body =
 	{
 		"uid":"xLwd4c1WjKaxG3Vf3GDVMXMTLFE3",
 		"info": [{
