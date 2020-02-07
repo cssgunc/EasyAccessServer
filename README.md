@@ -179,35 +179,39 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 # structs
 ```bash
 type student struct {
-	UID            string   `json:"uid"`
-	Name           string   `json:"name"`
-	Email          string   `json:"email"`
-	SchoolCode     string   `json:"schoolCode"`
-	GraduationYear string   `json:"graduationYear"`
-	WeightedGPA    float32  `json:"weightedGpa"`
-	UnweightedGPA  float32  `json:"unweightedGpa"`
-	ClassRank      int      `json:"classRank"`
-	SAT            int      `json:"SAT"`
-	ACT            int      `json:"ACT"`
-	Size           string   `json:"size"`
-	Location       string   `json:"location"`
-	Diversity      string   `json:"diversity"`
-	Majors         []string `json:"majors"`
-	Distance       string   `json:"distance"`
-	Zip            string   `json:"zip"`
-	Matches        []string `json:"matches"`
+	UID           string  `json:"uid"`
+	FirstName     string  `json:"firstname"`
+	LastName      string  `json:"lastname"`
+	Email         string  `json:"email"`
+	SchoolCode    string  `json:"schoolCode"`
+	WeightedGPA   float32 `json:"weightedGpa"`
+	UnweightedGPA float32 `json:"unweightedGpa"`
+	ClassRank     int     `json:"classRank"`
+	SAT           int     `json:"SAT"`
+	ACT           int     `json:"ACT"`
+	State         string  `json:"state"`
+	Zip           string  `json:"zip"`
+	AbilityToPay  int     `json:"abilityToPay"`
 }
+
 ```
 
 ```bash
 type college struct {
-	AcceptanceRate float64 `json:"Acceptance Rate"`
-	AverageGPA	float64 `json:"Average GPA"`
-	AverageSAT int64 `json:"Average SAT"`
-	Diversity float32 `json:"Diversity"`
-	Name string `json:"Name"`
-	Size int64 `json:"Size"`
-	Zip int64 `json:"Zip Code"`
+	ID             int32
+	SchoolName     string
+	CIPCode        int32
+	AvgACT         float32
+	AvgSAT         float32
+	AdmissionsRate float32
+	Size           int
+	Location       int
+	Lat            float64
+	Long           float64
+	Diversity      float32
+	State          int
+	Ownership      int
+	Majors         map[string]float32
 }
 ```
 
