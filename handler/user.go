@@ -56,20 +56,28 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	//TODO output pastMatches to frontend
 	pastMatches := loadUserMatches()
 
-	outputMatches, err := json.Marshal(pastMatches)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+	// outputMatches, err := json.Marshal(pastMatches)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
+	var output = test{
+		student: user,
+		results: pastMatches,
 	}
-
-	output, err := json.Marshal(userInfo.Data())
+	// outputJSON, err := json.Marshal(userInfo.Data())
+	// if err != nil {
+	// 	http.Error(w, err.Error(), 500)
+	// 	return
+	// }
+	outputJSON, err := json.Marshal(output)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Write(outputMatches)
-	w.Write(output)
+	//w.Write(outputMatches)
+	w.Write(outputJSON)
 	return
 }
 
@@ -110,6 +118,8 @@ func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+	return
 }
 
 type updateInfo struct {
@@ -209,6 +219,11 @@ func scoreStudent(UID string) int {
 	}
 	log.Println(topScore)
 	return topScore
+}
+
+type test struct {
+	student student
+	results SafetyTargetReach
 }
 
 type student struct {
