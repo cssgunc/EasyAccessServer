@@ -800,7 +800,7 @@ func getStateCodes() map[string]int {
 	return m
 }
 
-func loadUserMatches() SafetyTargetReach {
+func (h *Handler) loadUserMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	log.Println(user.UID)
 	docsnap, err := client.Collection("userMatches").Doc(user.UID).Get(ctx)
@@ -844,7 +844,13 @@ func loadUserMatches() SafetyTargetReach {
 		Target: target,
 		Reach:  reach,
 	}
-	return Temp
+	output, err := json.Marshal(Temp)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(output)
 }
 
 func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]college, error) {
