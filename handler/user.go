@@ -53,22 +53,12 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 
 	userInfo.DataTo(&user)
 
-	//TODO output pastMatches to frontend
-	pastMatches := loadUserMatches()
-
-	outputMatches, err := json.Marshal(pastMatches)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Write(outputMatches)
 	w.Write(output)
 	return
 }
@@ -110,6 +100,8 @@ func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+	return
 }
 
 type updateInfo struct {
