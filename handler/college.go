@@ -84,28 +84,34 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	var ccSafety []college
 
 	//TODO: switch to go routines
-	//TODO: Make these ranges rather than lat long distance
+	//This section is for Community College searchs based on grades and test scores
 	if score == 1 {
+		//no selectivity info since its a CC, given same queryParams as other searches,
+		// given a Channel to post the response back to when go routine is complete,
+		// gives that is a CC search and it wants all results
 		temp, err := queryColleges(nil, queryParams, nil, true, true)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		ccTarget = append(ccTarget, temp...)
 	} else if score == 2 {
+		//Same idea as above but puts the results into safety rather than target schools
 		temp, err := queryColleges(nil, queryParams, nil, true, true)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		ccSafety = append(ccSafety, temp...)
 	} else if user.UnweightedGPA <= 2.5 || user.ACT <= 17 || user.SAT <= 880 {
-		//TODO Only take colleges within 25 miles
+		//This only gets colleges within 25 miles from the persons zipcode
+		// getAllResults bool = false and within queryColleges it uses that bool
+		// to add a parameter to collegescorecard request stating only schools within 25 miles
 		temp, err := queryColleges(nil, queryParams, nil, true, false)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		ccSafety = append(ccSafety, temp...)
 	} else if user.UnweightedGPA <= 3.25 || user.ACT <= 18 || user.SAT <= 950 {
-		//TODO Only take colleges within 25 miles
+		//Same as above
 		temp, err := queryColleges(nil, queryParams, nil, true, false)
 		if err != nil {
 			log.Fatalln(err)
@@ -113,15 +119,28 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		ccSafety = append(ccSafety, temp...)
 	}
 
+	c1 := make(chan []college)
+	c2 := make(chan []college)
+	c3 := make(chan []college)
+
+	tempChannels := []chan []college{c1, c2, c3}
+
 	//takes each of the STR info ranges and querys college scorecard API
 	var safety []college
-	for _, v := range selectivityInfo[0] {
-		temp, err := queryColleges(&v, queryParams, nil, false, true)
+	for i, v := range selectivityInfo[0] {
+		wg.Add(1)
+		go queryColleges(&v, queryParams, tempChannels[i], false, true)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		safety = append(safety, temp...)
 	}
+	temp1 := <-c1
+	temp2 := <-c2
+	temp3 := <-c3
+	wg.Wait()
+	safety = append(safety, temp1...)
+	safety = append(safety, temp2...)
+	safety = append(safety, temp3...)
 	var target []college
 	for _, v := range selectivityInfo[1] {
 		temp, err := queryColleges(&v, queryParams, nil, false, true)
@@ -139,10 +158,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		reach = append(reach, temp...)
 	}
 
-	//adds CC results to be sorted
-	//TODO NEXT STEP might have to sort CC by them selves to get two closest
-	//Then appen them onto safetyResults
-	//Unless student is 4 or 5 since all of the colleges in S or T will be CC
 	if score <= 2 {
 		safety = append(safety, ccSafety...)
 		target = append(target, ccTarget...)
@@ -150,20 +165,33 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		safety = append(safety, ccSafety...)
 	}
 
+	cSafe := make(chan chanResult)
+	cTarget := make(chan chanResult)
+	cReach := make(chan chanResult)
+
 	//sorts each of the resulting queries based on student preferences
-	safetyResults, safetyIDs := sortColleges(safety, queryParams, "safety")
-	targetResults, targetIDs := sortColleges(target, queryParams, "target")
-	reachResults, reachIDs := sortColleges(reach, queryParams, "reach")
+	wg.Add(1)
+	go sortColleges(safety, queryParams, "safety", cSafe)
+	wg.Add(1)
+	go sortColleges(target, queryParams, "target", cTarget)
+	wg.Add(1)
+	go sortColleges(reach, queryParams, "reach", cReach)
+
+	safetyResults := <-cSafe
+	targetResults := <-cTarget
+	reachResults := <-cReach
+
+	wg.Wait()
 
 	results := SafetyTargetReach{
-		Safety: safetyResults,
-		Target: targetResults,
-		Reach:  reachResults,
+		Safety: safetyResults.results,
+		Target: targetResults.results,
+		Reach:  reachResults.results,
 	}
 	resultIDs := SafetyTargetReachIDs{
-		Safety: safetyIDs,
-		Target: targetIDs,
-		Reach:  reachIDs,
+		Safety: safetyResults.ids,
+		Target: targetResults.ids,
+		Reach:  reachResults.ids,
 	}
 
 	resultsInfo := []firestore.Update{{
@@ -345,13 +373,13 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 		params.Add("latest.admissions.admission_rate.overall__range", lowRate+".."+highRate)
 		params.Add("latest.admissions.sat_scores.average.overall__range", lowSat+".."+highSat)
 	}
-	params.Add("fields", "id,location.lat,location.lon,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	params.Add("fields", "id,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
 	//Limited to 100 per page max
 	params.Add("per_page", "100")
 
 	// Add Query Parameters to the URL
 	baseURL.RawQuery = params.Encode() // Escape Query Parameters
-	//log.Printf("Encoded URL is %q\n", baseURL.String())
+	log.Printf("Encoded URL is %q\n", baseURL.String())
 	response, err := http.Get(baseURL.String())
 	if err != nil {
 		return nil, err
@@ -408,14 +436,16 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 			c.AdmissionsRate,
 			c.Size,
 			c.Location,
-			c.Lat,
-			c.Long,
 			c.Diversity,
 			c.State,
 			c.Ownership,
 			majors,
 		}
 		colleges = append(colleges, temp)
+	}
+	if c != nil {
+		c <- colleges
+		wg.Done()
 	}
 	return colleges, nil
 }
@@ -472,7 +502,7 @@ func checkAffordability(c college, queryParams collegeParams) bool {
 }
 
 //Sorts the three categories STR into a ranked list based on preferences
-func sortColleges(colleges []college, queryParams collegeParams, rank string) ([]college, []int32) {
+func sortColleges(colleges []college, queryParams collegeParams, rank string, c chan chanResult) ([]college, []int32) {
 	//maps "name" to all of the info on that specific college
 	// used to look up college based on name from ranking
 	var collegeDict map[string]college
@@ -582,7 +612,15 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string) ([
 		finalIDs = append(finalIDs, collegeDict[kv.Key].ID)
 		finalSort[i] = collegeDict[kv.Key]
 	}
-
+	if c != nil {
+		var temp chanResult
+		temp = chanResult{
+			results: finalSort,
+			ids:     finalIDs,
+		}
+		c <- temp
+		wg.Done()
+	}
 	return finalSort, finalIDs
 }
 
@@ -870,7 +908,7 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 	params := url.Values{}
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	params.Add("id", stringIDs)
-	params.Add("fields", "id,location.lat,location.lon,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	params.Add("fields", "id,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
 	//Limited to 100 per page max
 	params.Add("per_page", "100")
 
@@ -929,8 +967,6 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 			c.AdmissionsRate,
 			c.Size,
 			c.Location,
-			c.Lat,
-			c.Long,
 			c.Diversity,
 			c.State,
 			c.Ownership,
@@ -995,8 +1031,6 @@ type Result struct {
 	AdmissionsRate                    float32 `json:"latest.admissions.admission_rate.overall"`
 	Size                              int     `json:"latest.student.size"`
 	Location                          int     `json:"school.locale"`
-	Lat                               float64 `json:"location.lat"`
-	Long                              float64 `json:"location.lon"`
 	Diversity                         float32 `json:"latest.student.demographics.race_ethnicity.white"`
 	State                             int     `json:"school.state_fips"`
 	Ownership                         int     `json:"school.ownership"`
@@ -1049,8 +1083,6 @@ type college struct {
 	AdmissionsRate float32
 	Size           int
 	Location       int
-	Lat            float64
-	Long           float64
 	Diversity      float32
 	State          int
 	Ownership      int
@@ -1092,4 +1124,9 @@ type selectivity struct {
 	HighGPA float64
 	LowSAT  int
 	HighSAT int
+}
+
+type chanResult struct {
+	results []college
+	ids     []int32
 }
