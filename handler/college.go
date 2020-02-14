@@ -124,38 +124,63 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	c3 := make(chan []college)
 
 	tempChannels := []chan []college{c1, c2, c3}
-
+	log.Println("safety search")
 	//takes each of the STR info ranges and querys college scorecard API
 	var safety []college
 	for i, v := range selectivityInfo[0] {
+		log.Println("HERE", v)
 		wg.Add(1)
 		go queryColleges(&v, queryParams, tempChannels[i], false, true)
 		if err != nil {
 			log.Fatalln(err)
 		}
 	}
-	temp1 := <-c1
-	temp2 := <-c2
-	temp3 := <-c3
-	wg.Wait()
-	safety = append(safety, temp1...)
-	safety = append(safety, temp2...)
-	safety = append(safety, temp3...)
-	var target []college
-	for _, v := range selectivityInfo[1] {
-		temp, err := queryColleges(&v, queryParams, nil, false, true)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		target = append(target, temp...)
+	var temp1 []college
+	var temp2 []college
+	var temp3 []college
+	tempArray := [][]college{temp1, temp2, temp3}
+	for i := range selectivityInfo[0] {
+		tempArray[i] = <-tempChannels[i]
 	}
-	var reach []college
-	for _, v := range selectivityInfo[2] {
-		temp, err := queryColleges(&v, queryParams, nil, false, true)
+	wg.Wait()
+	log.Println("Safe", tempArray[0])
+	for i := range selectivityInfo[0] {
+		safety = append(safety, tempArray[i]...)
+	}
+
+	var target []college
+	for i, v := range selectivityInfo[1] {
+		wg.Add(1)
+		go queryColleges(&v, queryParams, tempChannels[i], false, true)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		reach = append(reach, temp...)
+	}
+
+	for i := range selectivityInfo[1] {
+		tempArray[i] = <-tempChannels[i]
+	}
+	wg.Wait()
+	log.Println("target", tempArray[0])
+	for i := range selectivityInfo[1] {
+		target = append(target, tempArray[i]...)
+	}
+
+	var reach []college
+	for i, v := range selectivityInfo[2] {
+		wg.Add(1)
+		go queryColleges(&v, queryParams, tempChannels[i], false, true)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+	for i := range selectivityInfo[2] {
+		tempArray[i] = <-tempChannels[i]
+	}
+	wg.Wait()
+	log.Println("result", tempArray[2])
+	for i := range selectivityInfo[1] {
+		reach = append(reach, tempArray[i]...)
 	}
 
 	if score <= 2 {
@@ -164,7 +189,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	} else {
 		safety = append(safety, ccSafety...)
 	}
-
 	cSafe := make(chan chanResult)
 	cTarget := make(chan chanResult)
 	cReach := make(chan chanResult)
@@ -334,7 +358,7 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 
 //Querys college scorecard API for each STR
 func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeParams, c chan []college, ccSearch bool, getAllResults bool) ([]college, error) {
-
+	log.Println(selectivityInfo)
 	if len(statesMap) == 0 {
 		statesMap = getStateCodes()
 	}
@@ -379,7 +403,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 
 	// Add Query Parameters to the URL
 	baseURL.RawQuery = params.Encode() // Escape Query Parameters
-	log.Printf("Encoded URL is %q\n", baseURL.String())
+	//log.Printf("Encoded URL is %q\n", baseURL.String())
 	response, err := http.Get(baseURL.String())
 	if err != nil {
 		return nil, err
