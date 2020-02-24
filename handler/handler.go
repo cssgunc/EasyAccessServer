@@ -93,6 +93,8 @@ func New(c Config) (*Handler, error) {
 		r.Get("/updateSchoolNeedMet", h.updateSchoolNeedMet)
 		r.Post("/addUserInfo", h.addUserInfo)
 		r.Get("/pastMatches", h.loadUserMatches)
+		r.Get("/test", h.testOtherFunc)
+		r.Get("/updateMajor", h.updateMajorInfo)
 	})
 	r.Get("/health", h.health)
 
