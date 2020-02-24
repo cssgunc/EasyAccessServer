@@ -20,12 +20,25 @@ import (
 
 	firestore "cloud.google.com/go/firestore"
 	"github.com/mitchellh/mapstructure"
+	"google.golang.org/api/iterator"
 )
 
 var wg sync.WaitGroup
 var needMap map[string]int
 var statesMap map[string]int
 var regionMap map[string]int
+var majorsMap map[string][]string
+var schoolsWithMajor map[string]bool
+
+func (h *Handler) testOtherFunc(w http.ResponseWriter, r *http.Request) {
+	// err := setUpMajors([]string{"Computer & Information Sciences"})
+	// log.Println(schoolsWithMajor)
+	// output, err := json.Marshal(schoolsWithMajor)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	// w.Write(output)
+}
 
 //Automate this when CollegeScoreCard updates to allow for querying program_percentage
 //No need for security checks, doesnt access firestore
@@ -87,7 +100,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//scores the student from 1-5
-	score := scoreStudent(queryParams.UID)
+	score, test := scoreStudent(queryParams.UID)
 
 	selectivityInfo, err := getCollegeRanges(score)
 	if err != nil {
@@ -97,6 +110,12 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 
 	var ccTarget []college
 	var ccSafety []college
+
+	//set up schools with wanted major
+	err = setUpMajors(queryParams.Majors)
+	if err != nil {
+		log.Fatalln("setting up majors", err)
+	}
 
 	//TODO: switch to go routines
 	//This section is for Community College searchs based on grades and test scores
@@ -116,7 +135,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 			log.Fatalln(err)
 		}
 		ccSafety = append(ccSafety, temp...)
-	} else if user.UnweightedGPA <= 2.5 || user.ACT <= 17 || user.SAT <= 880 {
+	} else if user.UnweightedGPA <= 2.5 || (strings.ToLower(test) == "act" && user.ACT <= 17) || (strings.ToLower(test) == "sat" && user.SAT <= 880) {
 		//This only gets colleges within 25 miles from the persons zipcode
 		// getAllResults bool = false and within queryColleges it uses that bool
 		// to add a parameter to collegescorecard request stating only schools within 25 miles
@@ -125,7 +144,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 			log.Fatalln(err)
 		}
 		ccSafety = append(ccSafety, temp...)
-	} else if user.UnweightedGPA <= 3.25 || user.ACT <= 18 || user.SAT <= 950 {
+	} else if user.UnweightedGPA <= 3.25 || (strings.ToLower(test) == "act" && user.ACT <= 18) || (strings.ToLower(test) == "sat" && user.SAT <= 950) {
 		//Same as above
 		temp, err := queryColleges(nil, queryParams, nil, true, false)
 		if err != nil {
@@ -204,7 +223,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		Path:  "majors",
 		Value: queryParams.Majors,
 	}}
-
+	log.Println(resultsInfo)
 	userRef := client.Collection("userMatches").Doc(user.UID)
 	_, err = userRef.Update(ctx, resultsInfo)
 	if err != nil {
@@ -221,7 +240,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
 	w.Header().Set("content-type", "application/json")
 	w.Write(output)
 	return
@@ -341,11 +359,11 @@ func getRegionParams(region string) (string, string) {
 	case "instate":
 		return "school.state_fips", strconv.Itoa(statesMap[user.State])
 	case "in-region":
-		return "school.region_id=", strconv.Itoa(regionMap[user.State])
+		return "school.region_id", strconv.Itoa(regionMap[user.State])
 	case "national":
 		return "", ""
 	default:
-		return "school.region_id=", region
+		return "school.region_id", region
 	}
 }
 
@@ -363,11 +381,6 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	if err != nil {
 		return nil, err
 	}
-	//converts double major into query string that API expects
-	majorString := ""
-	for _, major := range queryParams.Majors {
-		majorString = majorString + ",latest.academics.program_percentage." + major
-	}
 
 	// Prepare Query Parameters
 	params := url.Values{}
@@ -375,7 +388,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	if ccSearch {
 		params.Add("school.carnegie_basic__range", "..14")
 		params.Add("school.state_fips", strconv.Itoa(statesMap[user.State]))
-		if getAllResults {
+		if !getAllResults {
 			params.Add("zip", user.Zip)
 			params.Add("distance", "25mi")
 		}
@@ -396,7 +409,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 		params.Add("latest.admissions.admission_rate.overall__range", lowRate+".."+highRate)
 		params.Add("latest.admissions.sat_scores.average.overall__range", lowSat+".."+highSat)
 	}
-	params.Add("fields", "id,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	params.Add("fields", "id,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips")
 	//Limited to 100 per page max
 	params.Add("per_page", "100")
 
@@ -449,7 +462,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	//converts results into type: College for rest of algorithm
 	var colleges []college
 	for _, c := range scorecardColleges.Results {
-		majors := parseMajors(queryParams.Majors, c)
+		majors := oldparseMajors(queryParams.Majors, c)
 		temp := college{
 			c.ID,
 			c.SchoolName,
@@ -473,21 +486,63 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	return colleges, nil
 }
 
-func checkMajors(c college, queryParams collegeParams) bool {
-	switch len(queryParams.Majors) {
-	case 1:
-		if c.Majors[queryParams.Majors[0]] != 0 {
-			return true
+func setUpMajors(majors []string) error {
+	temp, err := GetMajorParams(majors)
+	if err != nil {
+		return err
+	}
+	schoolsWithMajor, err = listCollegesWithMajors(temp)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//GetMajorParams not using currently since collegescorecard has bugs but hopefully can use in future
+func GetMajorParams(majors []string) ([]string, error) {
+	if len(majorsMap) == 0 {
+		majorsMap = getMajorsByCipCode()
+	}
+	var results []string
+	for _, m := range majors {
+		cipCodes := majorsMap[m]
+		for _, code := range cipCodes {
+			results = append(results, code)
 		}
-	case 2:
-		if c.Majors[queryParams.Majors[0]] != 0 && c.Majors[queryParams.Majors[1]] != 0 {
-			return true
+	}
+	return results, nil
+}
+
+func listCollegesWithMajors(codes []string) (map[string]bool, error) {
+	ctx := context.Background()
+	var schools map[string]bool
+	schools = make(map[string]bool)
+	for _, c := range codes {
+		iter := client.Collection("majors").Where("Codes", "array-contains", c).Documents(ctx)
+		for {
+			doc, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				//return err
+			}
+			var tempSchool schoolCipCodes
+			doc.DataTo(&tempSchool)
+			schools[tempSchool.School] = true
 		}
+	}
+	return schools, nil
+}
+
+func checkMajors(c college) bool {
+	if schoolsWithMajor[c.SchoolName] == true {
+		return true
 	}
 	return false
 }
 
-func checkAffordability(c college, queryParams collegeParams) bool {
+func checkAffordability(c college) bool {
 	switch c.Ownership {
 	//Public
 	case 1:
@@ -555,8 +610,8 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, c 
 		var canAfford = true
 
 		if c.CIPCode >= 14 {
-			hasMajors = checkMajors(c, queryParams)
-			canAfford = checkAffordability(c, queryParams)
+			hasMajors = checkMajors(c)
+			canAfford = checkAffordability(c)
 		}
 
 		//Checks if the school exists in the list of schools that has the wanted majors then sorts
@@ -582,7 +637,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, c 
 				}
 			}
 
-			//Location Preference  FIND OUT WHAT THEY WANT AND FIX THIS
+			//Location Preference
 			switch c.Location {
 			case 11, 12, 13:
 				if queryParams.Location == 1 {
@@ -650,7 +705,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, c 
 //Gets the percentage of people at a college that are doing the prefered major.
 //Used to see if the major a student wants is offered at the college or not
 //Hard coded for now because scorecard doesnt have a good way to get majors yet...
-func parseMajors(majors []string, college Result) map[string]float32 {
+func oldparseMajors(majors []string, college Result) map[string]float32 {
 	var temp map[string]float32
 	temp = make(map[string]float32)
 	switch majors[0] {
@@ -813,6 +868,34 @@ func parseMajors(majors []string, college Result) map[string]float32 {
 		}
 	}
 	return temp
+}
+
+func getMajorsByCipCode() map[string][]string {
+	file, err := os.Open("handler/majors.csv")
+	if err != nil {
+
+	}
+	csvfile := csv.NewReader(file)
+	var majors map[string][]string
+	majors = make(map[string][]string)
+	for {
+		// Read each record from csv
+		record, err := csvfile.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, ok := majors[record[0]]; ok {
+			temp, _ := strconv.Atoi(record[1])
+			majors[record[0]] = append(majors[record[0]], strconv.Itoa(temp))
+		} else {
+			temp, _ := strconv.Atoi(record[1])
+			majors[record[0]] = []string{strconv.Itoa(temp)}
+		}
+	}
+	return majors
 }
 
 func getSchoolNeedMet() map[string]int {
@@ -1003,7 +1086,7 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 	//converts results into type: College for rest of algorithm
 	var colleges []college
 	for _, c := range scorecardColleges.Results {
-		majors := parseMajors(majors, c)
+		majors := oldparseMajors(majors, c)
 		temp := college{
 			c.ID,
 			c.SchoolName,

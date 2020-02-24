@@ -56,6 +56,7 @@ func setUpApp() {
 		log.Fatalln(err)
 	}
 }
+
 func TestQueryColleges(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {

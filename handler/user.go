@@ -32,6 +32,7 @@ func Verify(idToken string) (*auth.Token, error) {
 
 //AuthUser is
 func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
+	log.Println("USER")
 	ctx := context.Background()
 	tokenBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -52,6 +53,7 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userInfo.DataTo(&user)
+	log.Println(user.FirstName)
 
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
@@ -155,7 +157,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func scoreStudent(UID string) int {
+func scoreStudent(UID string) (int, string) {
 	ctx := context.Background()
 
 	userInfo, err := client.Collection("users").Doc(UID).Get(ctx)
@@ -189,6 +191,7 @@ func scoreStudent(UID string) int {
 		}
 	}
 	topScore := 0
+	topTest := ""
 	for _, score := range potentialScores {
 		log.Println("Potential score: ", score)
 		i, err := strconv.Atoi(score[len(score)-1:])
@@ -197,10 +200,11 @@ func scoreStudent(UID string) int {
 		}
 		if i > topScore {
 			topScore = i
+			topTest = score[len(score)-4 : len(score)-1]
 		}
 	}
 	log.Println(topScore)
-	return topScore
+	return topScore, topTest
 }
 
 type student struct {
