@@ -44,7 +44,7 @@ func setHandler() error {
 		return errors.Wrap(err, "handler new")
 	}
 
-	println(h)
+	log.Println(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 	port := os.Getenv("PORT")
 	server := &http.Server{
 		Handler: h,

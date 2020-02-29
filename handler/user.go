@@ -23,14 +23,14 @@ func Verify(idToken string) (*auth.Token, error) {
 		return nil, err
 	}
 
-	token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	token, err := auth.VerifyIDToken(ctx, idToken)
 	if err != nil {
 		return nil, err
 	}
 	return token, nil
 }
 
-//AuthUser is
+//AuthUser authorizes the user and token then gets user info
 func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("USER")
 	ctx := context.Background()
