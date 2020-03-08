@@ -969,7 +969,6 @@ func getStateCodes() map[string]int {
 
 func (h *Handler) loadUserMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	log.Println(user.UID)
 	docsnap, err := client.Collection("userMatches").Doc(user.UID).Get(ctx)
 
 	matchesData, err := docsnap.DataAt("results")
@@ -1037,7 +1036,7 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 	params := url.Values{}
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	params.Add("id", stringIDs)
-	params.Add("fields", "id,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips"+majorString)
+	params.Add("fields", "id,school.name,school.carnegie_basic,latest.student.demographics.race_ethnicity.white,latest.admissions.act_scores.midpoint.cumulative,latest.admissions.sat_scores.average.overall,latest.admissions.admission_rate.overall,latest.student.size,school.locale,school.ownership,school.state_fips")
 	//Limited to 100 per page max
 	params.Add("per_page", "100")
 
