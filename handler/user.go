@@ -210,7 +210,10 @@ func scoreStudent(UID string) (int, string) {
 			topTest = score[len(score)-4 : len(score)-1]
 		}
 	}
-	log.Println(topScore)
+	if topScore == 0 {
+		topScore = 1
+	}
+	log.Println(topScore, topTest)
 	return topScore, topTest
 }
 

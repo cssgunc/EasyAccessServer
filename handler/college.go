@@ -215,27 +215,34 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		Reach:  reachResults.ids,
 	}
 
-	resultsInfo := []firestore.Update{{
-		Path:  "results",
-		Value: resultIDs,
-	}}
-	majorsInfo := []firestore.Update{{
-		Path:  "majors",
-		Value: queryParams.Majors,
-	}}
-	userRef := client.Collection("userMatches").Doc(user.UID)
-	_, err = userRef.Update(ctx, resultsInfo)
+	// resultsInfo := []firestore.Update{{
+	// 	Path:  "results",
+	// 	Value: resultIDs,
+	// }}
+	// majorsInfo := []firestore.Update{{
+	// 	Path:  "majors",
+	// 	Value: queryParams.Majors,
+	// }}
+
+	_, err = client.Collection("userMatches").Doc(user.UID).Set(ctx, map[string]interface{}{
+		"results": resultIDs,
+		"majors":  queryParams.Majors,
+	}, firestore.MergeAll)
+
+	//HERE
+	// userRef := client.Collection("userMatches").Doc(user.UID)
+	// _, err = userRef.Update(ctx, resultsInfo)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 404)
 		return
 	}
-	_, err = userRef.Update(ctx, majorsInfo)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), 404)
-		return
-	}
+	// _, err = userRef.Update(ctx, majorsInfo)
+	// if err != nil {
+	// 	log.Println(err)
+	// 	http.Error(w, err.Error(), 404)
+	// 	return
+	// }
 
 	output, err := json.Marshal(results)
 	if err != nil {
@@ -972,6 +979,18 @@ func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	docsnap, err := client.Collection("userMatches").Doc(user.UID).Get(ctx)
 	if !docsnap.Exists() {
+		temp := SafetyTargetReach{
+			Safety: nil,
+			Target: nil,
+			Reach:  nil,
+		}
+		output, err := json.Marshal(temp)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		w.Write(output)
 		return
 	}
 
