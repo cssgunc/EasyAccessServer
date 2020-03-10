@@ -968,9 +968,12 @@ func getStateCodes() map[string]int {
 	return m
 }
 
-func (h *Handler) loadUserMatches(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	docsnap, err := client.Collection("userMatches").Doc(user.UID).Get(ctx)
+	if !docsnap.Exists() {
+		return
+	}
 
 	matchesData, err := docsnap.DataAt("results")
 	if err != nil {
@@ -1018,6 +1021,7 @@ func (h *Handler) loadUserMatches(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("content-type", "application/json")
 	w.Write(output)
+	return
 }
 
 func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]college, error) {
