@@ -36,18 +36,21 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	tokenBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	var idToken string
 	err = json.Unmarshal(tokenBody, &idToken)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
 	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 404)
 		return
 	}
@@ -57,6 +60,7 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -87,18 +91,21 @@ func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
 	// }
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	var user student
 	err = json.Unmarshal(body, &user)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
 	_, err = client.Collection("users").Doc(user.UID).Set(ctx, user)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
