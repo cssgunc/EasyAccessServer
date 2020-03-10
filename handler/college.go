@@ -100,7 +100,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//scores the student from 1-5
-	score, test := scoreStudent(queryParams.UID)
+	score, test := scoreStudent(user.UID)
 
 	selectivityInfo, err := getCollegeRanges(score)
 	if err != nil {
@@ -223,15 +223,16 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		Path:  "majors",
 		Value: queryParams.Majors,
 	}}
-	log.Println(resultsInfo)
 	userRef := client.Collection("userMatches").Doc(user.UID)
 	_, err = userRef.Update(ctx, resultsInfo)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 404)
 		return
 	}
 	_, err = userRef.Update(ctx, majorsInfo)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), 404)
 		return
 	}
@@ -542,7 +543,7 @@ func checkMajors(c college) bool {
 	return false
 }
 
-func checkAffordability(c college) bool {
+func checkAffordability(c college, AbilityToPay int) bool {
 	switch c.Ownership {
 	//Public
 	case 1:
@@ -551,7 +552,7 @@ func checkAffordability(c college) bool {
 			return true
 		}
 		//if out-of-state
-		if user.AbilityToPay < 25000 {
+		if AbilityToPay < 25000 {
 			if strings.Contains(c.SchoolName, "University of North Carolina at Chapel Hill") || strings.Contains(c.SchoolName, "University of Michigan-Ann Arbor") || strings.Contains(c.SchoolName, "University of Virginia-Main Campus") {
 				return true
 			}
@@ -560,15 +561,15 @@ func checkAffordability(c college) bool {
 		}
 	//Private
 	case 2:
-		if user.AbilityToPay <= 6000 {
+		if AbilityToPay <= 6000 {
 			if needMap[c.SchoolName] >= 90 {
 				return true
 			}
-		} else if user.AbilityToPay >= 6000 && user.AbilityToPay <= 10000 {
+		} else if AbilityToPay >= 6000 && AbilityToPay <= 10000 {
 			if needMap[c.SchoolName] >= 87 {
 				return true
 			}
-		} else if user.AbilityToPay >= 10000 && user.AbilityToPay <= 15000 {
+		} else if AbilityToPay >= 10000 && AbilityToPay <= 15000 {
 			if needMap[c.SchoolName] >= 85 {
 				return true
 			}
@@ -611,7 +612,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, c 
 
 		if c.CIPCode >= 14 {
 			hasMajors = checkMajors(c)
-			canAfford = checkAffordability(c)
+			canAfford = checkAffordability(c, queryParams.AbilityToPay)
 		}
 
 		//Checks if the school exists in the list of schools that has the wanted majors then sorts
@@ -1236,12 +1237,12 @@ type Metadata struct {
 
 // Location = city/large, suburbs/midsize
 type collegeParams struct {
-	UID       string
-	Region    string
-	Majors    []string
-	Size      string
-	Location  int
-	Diversity string
+	Region       string
+	Majors       []string
+	AbilityToPay int
+	Size         string
+	Location     int
+	Diversity    string
 }
 
 type selectivity struct {

@@ -175,6 +175,7 @@ type student struct {
 	LastName      string  `json:"lastname"`
 	Email         string  `json:"email"`
 	SchoolCode    string  `json:"schoolCode"`
+	SchoolName    string  `json:"schoolName"`
 	WeightedGPA   float32 `json:"weightedGpa"`
 	UnweightedGPA float32 `json:"unweightedGpa"`
 	ClassRank     int     `json:"classRank"`
@@ -182,7 +183,6 @@ type student struct {
 	ACT           int     `json:"ACT"`
 	State         string  `json:"state"`
 	Zip           string  `json:"zip"`
-	AbilityToPay  int     `json:"abilityToPay"`
 }
 
 ```
