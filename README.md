@@ -197,8 +197,6 @@ type college struct {
 	AdmissionsRate float32
 	Size           int
 	Location       int
-	Lat            float64
-	Long           float64
 	Diversity      float32
 	State          int
 	Ownership      int
