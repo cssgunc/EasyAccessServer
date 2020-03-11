@@ -84,6 +84,24 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 //Takes in query params based on student perferences, delegates tasks to query and sort STR schools
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
+	tokenBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var idToken string
+	err = json.Unmarshal(tokenBody, &idToken)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	token, err := Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -98,7 +116,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//scores the student from 1-5
-	score, test := scoreStudent(user.UID)
+	score, test := scoreStudent(token.UID)
 
 	selectivityInfo, err := getCollegeRanges(score)
 	if err != nil {
@@ -133,7 +151,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 			log.Fatalln(err)
 		}
 		ccSafety = append(ccSafety, temp...)
-	} else if user.UnweightedGPA <= 2.5 || (strings.ToLower(test) == "act" && user.ACT <= 17) || (strings.ToLower(test) == "sat" && user.SAT <= 880) {
+	} else if queryParams.UnweightedGPA <= 2.5 || (strings.ToLower(test) == "act" && queryParams.ACT <= 17) || (strings.ToLower(test) == "sat" && queryParams.SAT <= 880) {
 		//This only gets colleges within 25 miles from the persons zipcode
 		// getAllResults bool = false and within queryColleges it uses that bool
 		// to add a parameter to collegescorecard request stating only schools within 25 miles
@@ -142,7 +160,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 			log.Fatalln(err)
 		}
 		ccSafety = append(ccSafety, temp...)
-	} else if user.UnweightedGPA <= 3.25 || (strings.ToLower(test) == "act" && user.ACT <= 18) || (strings.ToLower(test) == "sat" && user.SAT <= 950) {
+	} else if queryParams.UnweightedGPA <= 3.25 || (strings.ToLower(test) == "act" && queryParams.ACT <= 18) || (strings.ToLower(test) == "sat" && queryParams.SAT <= 950) {
 		//Same as above
 		temp, err := queryColleges(nil, queryParams, nil, true, false)
 		if err != nil {
@@ -222,7 +240,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	// 	Value: queryParams.Majors,
 	// }}
 
-	_, err = client.Collection("userMatches").Doc(user.UID).Set(ctx, map[string]interface{}{
+	_, err = client.Collection("userMatches").Doc(token.UID).Set(ctx, map[string]interface{}{
 		"results": resultIDs,
 		"majors":  queryParams.Majors,
 	}, firestore.MergeAll)
@@ -358,14 +376,14 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	return info, nil
 }
 
-func getRegionParams(region string) (string, string) {
+func getRegionParams(region string, state string) (string, string) {
 	switch strings.Trim(strings.ToLower(region), " ") {
 	case "live at home":
 		return "distance", "25mi"
 	case "instate":
-		return "school.state_fips", strconv.Itoa(statesMap[user.State])
+		return "school.state_fips", strconv.Itoa(statesMap[state])
 	case "in-region":
-		return "school.region_id", strconv.Itoa(regionMap[user.State])
+		return "school.region_id", strconv.Itoa(regionMap[state])
 	case "national":
 		return "", ""
 	default:
@@ -393,13 +411,13 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	params.Add("api_key", os.Getenv("SCORECARDAPIKEY"))
 	if ccSearch {
 		params.Add("school.carnegie_basic__range", "..14")
-		params.Add("school.state_fips", strconv.Itoa(statesMap[user.State]))
+		params.Add("school.state_fips", strconv.Itoa(statesMap[queryParams.State]))
 		if !getAllResults {
-			params.Add("zip", user.Zip)
+			params.Add("zip", queryParams.Zip)
 			params.Add("distance", "25mi")
 		}
 	} else {
-		key, value := getRegionParams(queryParams.Region)
+		key, value := getRegionParams(queryParams.Region, queryParams.State)
 		if len(key) != 0 {
 			params.Add(key, value)
 		}
@@ -537,12 +555,12 @@ type majorSchools struct {
 	Schools []string
 }
 
-func checkAffordability(c college, AbilityToPay int) bool {
+func checkAffordability(c college, AbilityToPay int, state string) bool {
 	switch c.Ownership {
 	//Public
 	case 1:
 		//if in-state
-		if c.State == statesMap[user.State] {
+		if c.State == statesMap[state] {
 			return true
 		}
 		//if out-of-state
@@ -968,7 +986,25 @@ func getStateCodes() map[string]int {
 
 func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	docsnap, err := client.Collection("userMatches").Doc(user.UID).Get(ctx)
+	tokenBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var idToken string
+	err = json.Unmarshal(tokenBody, &idToken)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	token, err := Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
+	docsnap, err := client.Collection("userMatches").Doc(token.UID).Get(ctx)
 	if !docsnap.Exists() {
 		temp := SafetyTargetReach{
 			Safety: nil,
@@ -1250,12 +1286,17 @@ type Metadata struct {
 
 // Location = city/large, suburbs/midsize
 type collegeParams struct {
-	Region       string
-	Majors       []string
-	AbilityToPay int
-	Size         string
-	Location     int
-	Diversity    string
+	State         string
+	UnweightedGPA float32
+	ACT           int
+	SAT           int
+	Region        string
+	Majors        []string
+	AbilityToPay  int
+	Size          string
+	Location      int
+	Diversity     string
+	Zip           string
 }
 
 type selectivity struct {
