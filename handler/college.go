@@ -20,7 +20,6 @@ import (
 
 	firestore "cloud.google.com/go/firestore"
 	"github.com/mitchellh/mapstructure"
-	"google.golang.org/api/iterator"
 )
 
 var wg sync.WaitGroup
@@ -28,7 +27,6 @@ var needMap map[string]int
 var statesMap map[string]int
 var regionMap map[string]int
 var majorsMap map[string][]string
-var schoolsWithMajor map[string]bool
 
 func (h *Handler) testOtherFunc(w http.ResponseWriter, r *http.Request) {
 	// err := setUpMajors([]string{"Computer & Information Sciences"})
@@ -112,7 +110,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	var ccSafety []college
 
 	//set up schools with wanted major
-	err = setUpMajors(queryParams.Majors)
+	schoolsWithMajor, err := setUpMajors(queryParams.Majors)
 	if err != nil {
 		log.Fatalln("setting up majors", err)
 	}
@@ -192,11 +190,11 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 
 	//sorts each of the resulting queries based on student preferences
 	wg.Add(1)
-	go sortColleges(safety, queryParams, "safety", cSafe)
+	go sortColleges(safety, queryParams, "safety", schoolsWithMajor, cSafe)
 	wg.Add(1)
-	go sortColleges(target, queryParams, "target", cTarget)
+	go sortColleges(target, queryParams, "target", schoolsWithMajor, cTarget)
 	wg.Add(1)
-	go sortColleges(reach, queryParams, "reach", cReach)
+	go sortColleges(reach, queryParams, "reach", schoolsWithMajor, cReach)
 
 	safetyResults := <-cSafe
 	targetResults := <-cTarget
@@ -470,7 +468,6 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	//converts results into type: College for rest of algorithm
 	var colleges []college
 	for _, c := range scorecardColleges.Results {
-		majors := oldparseMajors(queryParams.Majors, c)
 		temp := college{
 			c.ID,
 			c.SchoolName,
@@ -483,7 +480,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 			c.Diversity,
 			c.State,
 			c.Ownership,
-			majors,
+			queryParams.Majors,
 		}
 		colleges = append(colleges, temp)
 	}
@@ -494,16 +491,16 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	return colleges, nil
 }
 
-func setUpMajors(majors []string) error {
-	temp, err := GetMajorParams(majors)
+func setUpMajors(majors []string) (map[string]bool, error) {
+	codes, err := GetMajorParams(majors)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	schoolsWithMajor, err = listCollegesWithMajors(temp)
+	schoolsWithMajor, err := listCollegesWithMajors(codes)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return schoolsWithMajor, nil
 }
 
 //GetMajorParams not using currently since collegescorecard has bugs but hopefully can use in future
@@ -511,14 +508,11 @@ func GetMajorParams(majors []string) ([]string, error) {
 	if len(majorsMap) == 0 {
 		majorsMap = getMajorsByCipCode()
 	}
-	var results []string
+	var codes []string
 	for _, m := range majors {
-		cipCodes := majorsMap[m]
-		for _, code := range cipCodes {
-			results = append(results, code)
-		}
+		codes = append(codes, majorsMap[m]...)
 	}
-	return results, nil
+	return codes, nil
 }
 
 func listCollegesWithMajors(codes []string) (map[string]bool, error) {
@@ -526,28 +520,21 @@ func listCollegesWithMajors(codes []string) (map[string]bool, error) {
 	var schools map[string]bool
 	schools = make(map[string]bool)
 	for _, c := range codes {
-		iter := client.Collection("majors").Where("Codes", "array-contains", c).Documents(ctx)
-		for {
-			doc, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				//return err
-			}
-			var tempSchool schoolCipCodes
-			doc.DataTo(&tempSchool)
-			schools[tempSchool.School] = true
+		schoolsData, err := client.Collection("majors").Doc(c).Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+		var MajorSchools majorSchools
+		schoolsData.DataTo(&MajorSchools)
+		for _, school := range MajorSchools.Schools {
+			schools[school] = true
 		}
 	}
 	return schools, nil
 }
 
-func checkMajors(c college) bool {
-	if schoolsWithMajor[c.SchoolName] == true {
-		return true
-	}
-	return false
+type majorSchools struct {
+	Schools []string
 }
 
 func checkAffordability(c college, AbilityToPay int) bool {
@@ -588,7 +575,7 @@ func checkAffordability(c college, AbilityToPay int) bool {
 }
 
 //Sorts the three categories STR into a ranked list based on preferences
-func sortColleges(colleges []college, queryParams collegeParams, rank string, c chan chanResult) ([]college, []int32) {
+func sortColleges(colleges []college, queryParams collegeParams, rank string, schoolsWithMajor map[string]bool, c chan chanResult) ([]college, []int32) {
 	//maps "name" to all of the info on that specific college
 	// used to look up college based on name from ranking
 	var collegeDict map[string]college
@@ -618,7 +605,11 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, c 
 		var canAfford = true
 
 		if c.CIPCode >= 14 {
-			hasMajors = checkMajors(c)
+			if schoolsWithMajor[c.SchoolName] == true {
+				hasMajors = true
+			} else {
+				hasMajors = false
+			}
 			canAfford = checkAffordability(c, queryParams.AbilityToPay)
 		}
 
@@ -1109,7 +1100,6 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 	//converts results into type: College for rest of algorithm
 	var colleges []college
 	for _, c := range scorecardColleges.Results {
-		majors := oldparseMajors(majors, c)
 		temp := college{
 			c.ID,
 			c.SchoolName,
@@ -1238,7 +1228,7 @@ type college struct {
 	Diversity      float32
 	State          int
 	Ownership      int
-	Majors         map[string]float32
+	Majors         []string
 }
 
 // ScoreCardResponse structure

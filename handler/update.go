@@ -76,25 +76,21 @@ func (h *Handler) updateMajorInfo(w http.ResponseWriter, r *http.Request) {
 		}
 		scorecardColleges.Results = append(scorecardColleges.Results, tempColleges.Results...)
 	}
-
-	var schoolArray []schoolCipCodes
+	var codeMap map[string][]string
+	codeMap = make(map[string][]string)
 	for _, c := range scorecardColleges.Results {
-		var codesArray []string
+		if strings.Contains(c.SchoolName, "/") {
+			c.SchoolName = strings.ReplaceAll(c.SchoolName, "/", " ")
+		}
 		for _, code := range c.Codes {
-			codesArray = append(codesArray, code.Code)
+			codeMap[code.Code] = append(codeMap[code.Code], c.SchoolName)
 		}
-		temp := schoolCipCodes{
-			c.SchoolName,
-			codesArray,
-		}
-		schoolArray = append(schoolArray, temp)
 	}
 	ctx := context.Background()
-	for _, school := range schoolArray {
-		if strings.Contains(school.School, "/") {
-			school.School = strings.ReplaceAll(school.School, "/", " ")
-		}
-		_, err = client.Collection("majors").Doc(school.School).Set(ctx, school)
+	for code, schools := range codeMap {
+		_, err = client.Collection("majors").Doc(code).Set(ctx, map[string]interface{}{
+			"schools": schools,
+		})
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -104,8 +100,7 @@ func (h *Handler) updateMajorInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 type schoolCipCodes struct {
-	School string
-	Codes  []string
+	Schools []string
 }
 
 type cipScoreCardResponse struct {
@@ -177,7 +172,7 @@ func (h *Handler) updateSelectivityScores(w http.ResponseWriter, r *http.Request
 		}
 
 	}
-	//log.Println(sSAT)
+
 	for _, record := range sACT {
 		_, err := client.Collection("Selectivity").Doc(record.Score).Set(ctx, record)
 		if err != nil {
