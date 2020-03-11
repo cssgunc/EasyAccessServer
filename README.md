@@ -133,12 +133,19 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		[]string
 /collegeMatches - POST
 	Body
+		// Location = city/large, suburbs/midsize
 		type collegeParams struct {
-			ZIP      string `json:"ZIP"`
-			State    string
-			Region   string
-			Majors   []string
-			Location int
+			State         string
+			UnweightedGPA float32
+			ACT           int
+			SAT           int
+			Region        string
+			Majors        []string
+			AbilityToPay  int
+			Size          string
+			Location      int
+			Diversity     string
+			Zip           string
 		}
 	Response
 		type SafetyTargetReach struct {
