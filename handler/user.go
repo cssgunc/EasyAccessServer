@@ -13,8 +13,6 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-var user student
-
 //Verify user
 func Verify(idToken string) (*auth.Token, error) {
 	ctx := context.Background()
@@ -54,9 +52,6 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 404)
 		return
 	}
-
-	userInfo.DataTo(&user)
-	log.Println(user.FirstName)
 
 	output, err := json.Marshal(userInfo.Data())
 	if err != nil {
