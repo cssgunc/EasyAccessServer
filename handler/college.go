@@ -628,7 +628,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 			} else {
 				hasMajors = false
 			}
-			canAfford = checkAffordability(c, queryParams.AbilityToPay)
+			canAfford = checkAffordability(c, queryParams.AbilityToPay, queryParams.State)
 		}
 
 		//Checks if the school exists in the list of schools that has the wanted majors then sorts

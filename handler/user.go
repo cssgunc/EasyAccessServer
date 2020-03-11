@@ -34,19 +34,24 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	tokenBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 	var idToken string
 	err = json.Unmarshal(tokenBody, &idToken)
 	if err != nil {
-		log.Println(err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
-	userInfo, err := client.Collection("users").Doc(idToken).Get(ctx)
+	token, err := Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
+
+	userInfo, err := client.Collection("users").Doc(token.UID).Get(ctx)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 404)
@@ -66,24 +71,24 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	// tokenBody, err := ioutil.ReadAll(r.Body)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), 500)
-	// 	return
-	// }
-	// var idToken string
-	// err = json.Unmarshal(tokenBody, &idToken)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), 500)
-	// 	return
-	// }
+	tokenBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var idToken string
+	err = json.Unmarshal(tokenBody, &idToken)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
-	// _, err = Verify(idToken)
-	// if err != nil {
-	// 	log.Printf("error verifying ID token: %v\n", err)
-	// 	http.Error(w, err.Error(), 401)
-	// 	return
-	// }
+	token, err := Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
@@ -98,7 +103,7 @@ func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = client.Collection("users").Doc(user.UID).Set(ctx, user)
+	_, err = client.Collection("users").Doc(token.UID).Set(ctx, user)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), 500)
@@ -115,24 +120,24 @@ type updateInfo struct {
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	// tokenBody, err := ioutil.ReadAll(r.Body)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), 500)
-	// 	return
-	// }
-	// var idToken string
-	// err = json.Unmarshal(tokenBody, &idToken)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), 500)
-	// 	return
-	// }
+	tokenBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var idToken string
+	err = json.Unmarshal(tokenBody, &idToken)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
-	// _, err = Verify(idToken)
-	// if err != nil {
-	// 	log.Printf("error verifying ID token: %v\n", err)
-	// 	http.Error(w, err.Error(), 401)
-	// 	return
-	// }
+	_, err = Verify(idToken)
+	if err != nil {
+		log.Printf("error verifying ID token: %v\n", err)
+		http.Error(w, err.Error(), 401)
+		return
+	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
