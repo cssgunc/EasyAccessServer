@@ -16,12 +16,11 @@ import (
 //Verify user
 func Verify(idToken string) (*auth.Token, error) {
 	ctx := context.Background()
-	auth, err := app.Auth(ctx)
+	temp, err := app.Auth(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	token, err := auth.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+	token, err := temp.VerifyIDTokenAndCheckRevoked(ctx, idToken)
 	if err != nil {
 		return nil, err
 	}
@@ -32,24 +31,15 @@ func Verify(idToken string) (*auth.Token, error) {
 func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("USER")
 	ctx := context.Background()
-	tokenBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	var idToken string
-	err = json.Unmarshal(tokenBody, &idToken)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
+	idToken := r.Header.Get("Authorization")
+	log.Println(idToken)
 	token, err := Verify(idToken)
 	if err != nil {
-		log.Printf("error verifying ID token: %v\n", err)
+		log.Println("error verifying ID token: ", err.Error())
 		http.Error(w, err.Error(), 401)
 		return
 	}
+	log.Println("TOKEN", token)
 
 	userInfo, err := client.Collection("users").Doc(token.UID).Get(ctx)
 	if err != nil {

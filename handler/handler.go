@@ -43,9 +43,10 @@ func (h *Handler) setUpApp() {
 	ProjectID := os.Getenv("ProjectID")
 	ctx := context.Background()
 	conf := &firebase.Config{ProjectID: ProjectID}
-	app, err := firebase.NewApp(ctx, conf)
+	var err error
+	app, err = firebase.NewApp(ctx, conf)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln(err.Error())
 	}
 
 	client, err = app.Firestore(ctx)
@@ -85,7 +86,7 @@ func New(c Config) (*Handler, error) {
 	h.setUpApp()
 	r.Route("/", func(r chi.Router) {
 		// set up routes
-		r.Post("/user", h.AuthUser)
+		r.Get("/user", h.AuthUser)
 		r.Patch("/updateUser", h.updateUser)
 		r.Post("/collegeMatches", h.getMatches)
 		r.Post("/addUserInfo", h.addUserInfo)

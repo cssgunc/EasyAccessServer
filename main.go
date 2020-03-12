@@ -44,7 +44,6 @@ func setHandler() error {
 		return errors.Wrap(err, "handler new")
 	}
 
-	println(h)
 	port := os.Getenv("PORT")
 	server := &http.Server{
 		Handler: h,
