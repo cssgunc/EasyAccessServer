@@ -360,11 +360,11 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 
 func getRegionParams(region string) (string, string) {
 	switch strings.Trim(strings.ToLower(region), " ") {
-	case "live at home":
+	case "home":
 		return "distance", "25mi"
-	case "instate":
+	case "state":
 		return "school.state_fips", strconv.Itoa(statesMap[user.State])
-	case "in-region":
+	case "region":
 		return "school.region_id", strconv.Itoa(regionMap[user.State])
 	case "national":
 		return "", ""
