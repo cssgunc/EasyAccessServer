@@ -510,7 +510,7 @@ func GetMajorParams(majors []string) ([]string, error) {
 	}
 	var codes []string
 	for _, m := range majors {
-		codes = append(codes, majorsMap[m]...)
+		codes = append(codes, majorsMap[strings.ToLower(m)]...)
 	}
 	return codes, nil
 }
@@ -886,6 +886,7 @@ func getMajorsByCipCode() map[string][]string {
 		if err != nil {
 			log.Fatal(err)
 		}
+		record[0] = strings.ToLower(record[0])
 		if _, ok := majors[record[0]]; ok {
 			temp, _ := strconv.Atoi(record[1])
 			majors[record[0]] = append(majors[record[0]], strconv.Itoa(temp))
