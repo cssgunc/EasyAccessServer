@@ -84,26 +84,16 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 //Takes in query params based on student perferences, delegates tasks to query and sort STR schools
 func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	tokenBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	var idToken string
-	err = json.Unmarshal(tokenBody, &idToken)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
+	idToken := r.Header.Get("Authorization")
 	token, err := Verify(idToken)
 	if err != nil {
-		log.Printf("error verifying ID token: %v\n", err)
+		log.Println("error verifying ID token: ", err.Error())
 		http.Error(w, err.Error(), 401)
 		return
 	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.Println(err.Error())
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -111,6 +101,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	var queryParams collegeParams
 	err = json.Unmarshal(body, &queryParams)
 	if err != nil {
+		log.Println(err.Error())
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -120,7 +111,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 
 	selectivityInfo, err := getCollegeRanges(score)
 	if err != nil {
-		fmt.Println("bad SelectivityInfo ", err)
+		log.Println(err.Error())
 		return
 	}
 
@@ -231,34 +222,16 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		Reach:  reachResults.ids,
 	}
 
-	// resultsInfo := []firestore.Update{{
-	// 	Path:  "results",
-	// 	Value: resultIDs,
-	// }}
-	// majorsInfo := []firestore.Update{{
-	// 	Path:  "majors",
-	// 	Value: queryParams.Majors,
-	// }}
-
 	_, err = client.Collection("userMatches").Doc(token.UID).Set(ctx, map[string]interface{}{
 		"results": resultIDs,
 		"majors":  queryParams.Majors,
 	}, firestore.MergeAll)
 
-	//HERE
-	// userRef := client.Collection("userMatches").Doc(user.UID)
-	// _, err = userRef.Update(ctx, resultsInfo)
 	if err != nil {
-		log.Println(err)
+		log.Println(err.Error())
 		http.Error(w, err.Error(), 404)
 		return
 	}
-	// _, err = userRef.Update(ctx, majorsInfo)
-	// if err != nil {
-	// 	log.Println(err)
-	// 	http.Error(w, err.Error(), 404)
-	// 	return
-	// }
 
 	output, err := json.Marshal(results)
 	if err != nil {
@@ -378,11 +351,11 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 
 func getRegionParams(region string, state string) (string, string) {
 	switch strings.Trim(strings.ToLower(region), " ") {
-	case "live at home":
+	case "home":
 		return "distance", "25mi"
-	case "instate":
+	case "state":
 		return "school.state_fips", strconv.Itoa(statesMap[state])
-	case "in-region":
+	case "region":
 		return "school.region_id", strconv.Itoa(regionMap[state])
 	case "national":
 		return "", ""
@@ -986,24 +959,14 @@ func getStateCodes() map[string]int {
 
 func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	tokenBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	var idToken string
-	err = json.Unmarshal(tokenBody, &idToken)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
+	idToken := r.Header.Get("Authorization")
 	token, err := Verify(idToken)
 	if err != nil {
-		log.Printf("error verifying ID token: %v\n", err)
+		log.Println("error verifying ID token: ", err.Error())
 		http.Error(w, err.Error(), 401)
 		return
 	}
+	log.Println(token)
 	docsnap, err := client.Collection("userMatches").Doc(token.UID).Get(ctx)
 	if !docsnap.Exists() {
 		temp := SafetyTargetReach{
@@ -1013,6 +976,7 @@ func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 		}
 		output, err := json.Marshal(temp)
 		if err != nil {
+			log.Println(err.Error())
 			http.Error(w, err.Error(), 500)
 			return
 		}
@@ -1062,6 +1026,7 @@ func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 	}
 	output, err := json.Marshal(Temp)
 	if err != nil {
+		log.Println(err.Error())
 		http.Error(w, err.Error(), 500)
 		return
 	}

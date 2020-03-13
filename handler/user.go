@@ -32,14 +32,12 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("USER")
 	ctx := context.Background()
 	idToken := r.Header.Get("Authorization")
-	log.Println(idToken)
 	token, err := Verify(idToken)
 	if err != nil {
 		log.Println("error verifying ID token: ", err.Error())
 		http.Error(w, err.Error(), 401)
 		return
 	}
-	log.Println("TOKEN", token)
 
 	userInfo, err := client.Collection("users").Doc(token.UID).Get(ctx)
 	if err != nil {
@@ -61,21 +59,10 @@ func (h *Handler) AuthUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) addUserInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	tokenBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	var idToken string
-	err = json.Unmarshal(tokenBody, &idToken)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
+	idToken := r.Header.Get("Authorization")
 	token, err := Verify(idToken)
 	if err != nil {
-		log.Printf("error verifying ID token: %v\n", err)
+		log.Println("error verifying ID token: ", err.Error())
 		http.Error(w, err.Error(), 401)
 		return
 	}
@@ -110,21 +97,10 @@ type updateInfo struct {
 
 func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	tokenBody, err := ioutil.ReadAll(r.Body)
+	idToken := r.Header.Get("Authorization")
+	token, err := Verify(idToken)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	var idToken string
-	err = json.Unmarshal(tokenBody, &idToken)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	_, err = Verify(idToken)
-	if err != nil {
-		log.Printf("error verifying ID token: %v\n", err)
+		log.Println("error verifying ID token: ", err.Error())
 		http.Error(w, err.Error(), 401)
 		return
 	}
@@ -141,7 +117,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userRef := client.Collection("users").Doc(newInfo.UID)
+	userRef := client.Collection("users").Doc(token.UID)
 	_, err = userRef.Update(ctx, newInfo.Info)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
