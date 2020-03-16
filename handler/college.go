@@ -357,10 +357,8 @@ func getRegionParams(region string, state string) (string, string) {
 		return "school.state_fips", strconv.Itoa(statesMap[state])
 	case "region":
 		return "school.region_id", strconv.Itoa(regionMap[state])
-	case "national":
-		return "", ""
 	default:
-		return "school.region_id", region
+		return "", ""
 	}
 }
 
