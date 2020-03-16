@@ -43,7 +43,7 @@ func (h *Handler) testOtherFunc(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open("handler/majors.csv")
 	if err != nil {
-
+		log.Println(err.Error())
 	}
 	csvfile := csv.NewReader(file)
 	var majors map[string][]int
@@ -55,7 +55,7 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err.Error())
 		}
 		if _, ok := majors[record[0]]; ok {
 			temp, _ := strconv.Atoi(record[1])
@@ -74,7 +74,7 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(keys)
 	output, err := json.Marshal(keys)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err.Error())
 	}
 	w.Header().Set("content-type", "application/json")
 	w.Write(output)
