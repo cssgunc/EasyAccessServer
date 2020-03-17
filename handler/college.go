@@ -511,6 +511,7 @@ func setUpMajors(majors []string) (map[string]bool, error) {
 
 //GetMajorParams not using currently since collegescorecard has bugs but hopefully can use in future
 func GetMajorParams(majors []string) ([]string, error) {
+	log.Println(majors)
 	if len(majorsMap) == 0 {
 		var err error
 		majorsMap, err = getMajorsByCipCode()
@@ -621,6 +622,9 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 		var canAfford = true
 
 		if c.CIPCode >= 14 {
+			if strings.Contains(c.SchoolName, "/") {
+				c.SchoolName = strings.ReplaceAll(c.SchoolName, "/", " ")
+			}
 			if schoolsWithMajor[c.SchoolName] == true {
 				hasMajors = true
 			} else {
@@ -715,174 +719,6 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 		wg.Done()
 	}
 	return finalSort, finalIDs, nil
-}
-
-//Gets the percentage of people at a college that are doing the prefered major.
-//Used to see if the major a student wants is offered at the college or not
-//Hard coded for now because scorecard doesnt have a good way to get majors yet...
-func oldparseMajors(majors []string, college Result) map[string]float32 {
-	var temp map[string]float32
-	temp = make(map[string]float32)
-	switch majors[0] {
-	case "ariculture":
-		temp["agricuture"] = college.Agriculture
-	case "resources":
-		temp["resources"] = college.Resources
-	case "architecture":
-		temp["architecture"] = college.Architecture
-	case "ethnicCulturalGender":
-		temp["ethnicCulturalGender"] = college.EthnicCulturalGender
-	case "communication":
-		temp["communication"] = college.Communication
-	case "communicationsTechnology":
-		temp["communicationsTechnology"] = college.CommunicationsTechnology
-	case "computer":
-		temp["computer"] = college.Computer
-	case "personalCulinary":
-		temp["personalCulinary"] = college.PersonalCulinary
-	case "education":
-		temp["education"] = college.Education
-	case "engineering":
-		temp["engineering"] = college.Engineering
-	case "engineeringTechnology":
-		temp["engineeringTechnology"] = college.EngineeringTechnology
-	case "language":
-		temp["language"] = college.Language
-	case "familyConsumerScience":
-		temp["familyConsumerScience"] = college.FamilyConsumerScience
-	case "legal":
-		temp["legal"] = college.Legal
-	case "english":
-		temp["english"] = college.English
-	case "humanities":
-		temp["humanities"] = college.Humanities
-	case "library":
-		temp["library"] = college.Library
-	case "biological":
-		temp["biological"] = college.Biological
-	case "mathematics":
-		temp["mathematics"] = college.Mathematics
-	case "military":
-		temp["military"] = college.Military
-	case "multidiscipline":
-		temp["multidiscipline"] = college.Multidiscipline
-	case "parksRecreationFitness":
-		temp["parksRecreationFitness"] = college.ParksRecreationFitness
-	case "philosophyReligious":
-		temp["philosophyReligious"] = college.PhilosophyReligious
-	case "theologyReligiousVocation":
-		temp["theologyReligiousVocation"] = college.TheologyReligiousVocation
-	case "physicalScience":
-		temp["physicalScience"] = college.PhysicalScience
-	case "scienceTechnology":
-		temp["scienceTechnology"] = college.ScienceTechnology
-	case "psychology":
-		temp["psychology"] = college.Psychology
-	case "securityLawEnforcement":
-		temp["securityLawEnforcement"] = college.SecurityLawEnforcement
-	case "publicAdministrationSocialService":
-		temp["publicAdministrationSocialService"] = college.PublicAdministrationSocialService
-	case "socialScience":
-		temp["socialScience"] = college.SocialScience
-	case "construction":
-		temp["construction"] = college.Construction
-	case "mechanicRepairTechnology":
-		temp["mechanicRepairTechnology"] = college.MechanicRepairTechnology
-	case "precisionProduction":
-		temp["precisionProduction"] = college.PrecisionProduction
-	case "transportation":
-		temp["transportation"] = college.Transportation
-	case "visualPerforming":
-		temp["visualPerforming"] = college.VisualPerforming
-	case "health":
-		temp["health"] = college.Health
-	case "businessMarketing":
-		temp["businessMarketing"] = college.BusinessMarketing
-	case "history":
-		temp["history"] = college.History
-	}
-
-	if len(majors) == 2 {
-		switch majors[1] {
-		case "ariculture":
-			temp["agricuture"] = college.Agriculture
-		case "resources":
-			temp["resources"] = college.Resources
-		case "architecture":
-			temp["architecture"] = college.Architecture
-		case "ethnicCulturalGender":
-			temp["ethnicCulturalGender"] = college.EthnicCulturalGender
-		case "communication":
-			temp["communication"] = college.Communication
-		case "communicationsTechnology":
-			temp["communicationsTechnology"] = college.CommunicationsTechnology
-		case "computer":
-			temp["computer"] = college.Computer
-		case "personalCulinary":
-			temp["personalCulinary"] = college.PersonalCulinary
-		case "education":
-			temp["education"] = college.Education
-		case "engineering":
-			temp["engineering"] = college.Engineering
-		case "engineeringTechnology":
-			temp["engineeringTechnology"] = college.EngineeringTechnology
-		case "language":
-			temp["language"] = college.Language
-		case "familyConsumerScience":
-			temp["familyConsumerScience"] = college.FamilyConsumerScience
-		case "legal":
-			temp["legal"] = college.Legal
-		case "english":
-			temp["english"] = college.English
-		case "humanities":
-			temp["humanities"] = college.Humanities
-		case "library":
-			temp["library"] = college.Library
-		case "biological":
-			temp["biological"] = college.Biological
-		case "mathematics":
-			temp["mathematics"] = college.Mathematics
-		case "military":
-			temp["military"] = college.Military
-		case "multidiscipline":
-			temp["multidiscipline"] = college.Multidiscipline
-		case "parksRecreationFitness":
-			temp["parksRecreationFitness"] = college.ParksRecreationFitness
-		case "philosophyReligious":
-			temp["philosophyReligious"] = college.PhilosophyReligious
-		case "theologyReligiousVocation":
-			temp["theologyReligiousVocation"] = college.TheologyReligiousVocation
-		case "physicalScience":
-			temp["physicalScience"] = college.PhysicalScience
-		case "scienceTechnology":
-			temp["scienceTechnology"] = college.ScienceTechnology
-		case "psychology":
-			temp["psychology"] = college.Psychology
-		case "securityLawEnforcement":
-			temp["securityLawEnforcement"] = college.SecurityLawEnforcement
-		case "publicAdministrationSocialService":
-			temp["publicAdministrationSocialService"] = college.PublicAdministrationSocialService
-		case "socialScience":
-			temp["socialScience"] = college.SocialScience
-		case "construction":
-			temp["construction"] = college.Construction
-		case "mechanicRepairTechnology":
-			temp["mechanicRepairTechnology"] = college.MechanicRepairTechnology
-		case "precisionProduction":
-			temp["precisionProduction"] = college.PrecisionProduction
-		case "transportation":
-			temp["transportation"] = college.Transportation
-		case "visualPerforming":
-			temp["visualPerforming"] = college.VisualPerforming
-		case "health":
-			temp["health"] = college.Health
-		case "businessMarketing":
-			temp["businessMarketing"] = college.BusinessMarketing
-		case "history":
-			temp["history"] = college.History
-		}
-	}
-	return temp
 }
 
 func getMajorsByCipCode() (map[string][]string, error) {
