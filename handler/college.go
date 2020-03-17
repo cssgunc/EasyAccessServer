@@ -25,6 +25,7 @@ import (
 var wg sync.WaitGroup
 var needMap map[string]int
 var statesMap map[string]int
+var numToState map[int]string
 var regionMap map[string]int
 var majorsMap map[string][]string
 
@@ -366,7 +367,7 @@ func getRegionParams(region string, state string) (string, string) {
 func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeParams, c chan []college, ccSearch bool, getAllResults bool) ([]college, error) {
 
 	if len(statesMap) == 0 {
-		statesMap = getStateCodes()
+		statesMap, numToState = getStateCodes()
 	}
 	if len(regionMap) == 0 {
 		regionMap = getStatesByRegion()
@@ -467,7 +468,7 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 			c.Size,
 			c.Location,
 			c.Diversity,
-			c.State,
+			numToState[c.State],
 			c.Ownership,
 			queryParams.Majors,
 		}
@@ -531,7 +532,7 @@ func checkAffordability(c college, AbilityToPay int, state string) bool {
 	//Public
 	case 1:
 		//if in-state
-		if c.State == statesMap[state] {
+		if c.State == state {
 			return true
 		}
 		//if out-of-state
@@ -583,7 +584,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 
 	//Maps states to specific code from ScoreCard API
 	if len(statesMap) == 0 {
-		statesMap = getStateCodes()
+		statesMap, numToState = getStateCodes()
 	}
 
 	//major and affordability
@@ -932,12 +933,13 @@ func getStatesByRegion() map[string]int {
 	return m
 }
 
-func getStateCodes() map[string]int {
+func getStateCodes() (map[string]int, map[int]string) {
 	file, err := os.Open("handler/stateCodes.csv")
 	if err != nil {
 
 	}
 	m := make(map[string]int)
+	n := make(map[int]string)
 	csvfile := csv.NewReader(file)
 	for {
 		// Read each record from csv
@@ -951,8 +953,9 @@ func getStateCodes() map[string]int {
 		state := strings.TrimSpace(record[1])
 		code, err := strconv.Atoi(record[0])
 		m[state] = code
+		n[code] = state
 	}
-	return m
+	return m, n
 }
 
 func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
@@ -1109,7 +1112,7 @@ func queryCollegesByID(ids []int32, majors []string, c chan []college) ([]colleg
 			c.Size,
 			c.Location,
 			c.Diversity,
-			c.State,
+			numToState[c.State],
 			c.Ownership,
 			majors,
 		}
@@ -1225,7 +1228,7 @@ type college struct {
 	Size           int
 	Location       int
 	Diversity      float32
-	State          int
+	State          string
 	Ownership      int
 	Majors         []string
 }
