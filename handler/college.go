@@ -108,11 +108,12 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//scores the student from 1-5
-	score, test := scoreStudent(token.UID)
+	score, test, err := scoreStudent(token.UID)
 
 	selectivityInfo, err := getCollegeRanges(score)
 	if err != nil {
 		log.Println(err.Error())
+		http.Error(w, err.Error(), 500)
 		return
 	}
 
@@ -122,7 +123,8 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	//set up schools with wanted major
 	schoolsWithMajor, err := setUpMajors(queryParams.Majors)
 	if err != nil {
-		log.Fatalln("setting up majors", err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
 	//TODO: switch to go routines
@@ -133,14 +135,16 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		// gives that is a CC search and it wants all results
 		temp, err := queryColleges(nil, queryParams, nil, true, true)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		ccTarget = append(ccTarget, temp...)
 	} else if score == 2 {
 		//Same idea as above but puts the results into safety rather than target schools
 		temp, err := queryColleges(nil, queryParams, nil, true, true)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		ccSafety = append(ccSafety, temp...)
 	} else if queryParams.UnweightedGPA <= 2.5 || (strings.ToLower(test) == "act" && queryParams.ACT <= 17) || (strings.ToLower(test) == "sat" && queryParams.SAT <= 880) {
@@ -149,14 +153,16 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		// to add a parameter to collegescorecard request stating only schools within 25 miles
 		temp, err := queryColleges(nil, queryParams, nil, true, false)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		ccSafety = append(ccSafety, temp...)
 	} else if queryParams.UnweightedGPA <= 3.25 || (strings.ToLower(test) == "act" && queryParams.ACT <= 18) || (strings.ToLower(test) == "sat" && queryParams.SAT <= 950) {
 		//Same as above
 		temp, err := queryColleges(nil, queryParams, nil, true, false)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		ccSafety = append(ccSafety, temp...)
 	}
@@ -166,7 +172,8 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	for _, v := range selectivityInfo[0] {
 		temp, err := queryColleges(&v, queryParams, nil, false, true)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		safety = append(safety, temp...)
 	}
@@ -174,7 +181,8 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	for _, v := range selectivityInfo[1] {
 		temp, err := queryColleges(&v, queryParams, nil, false, true)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		target = append(target, temp...)
 	}
@@ -182,7 +190,8 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 	for _, v := range selectivityInfo[2] {
 		temp, err := queryColleges(&v, queryParams, nil, false, true)
 		if err != nil {
-			log.Fatalln(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		reach = append(reach, temp...)
 	}
@@ -236,7 +245,8 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 
 	output, err := json.Marshal(results)
 	if err != nil {
-		log.Fatalln(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 	w.Header().Set("content-type", "application/json")
 	w.Write(output)
@@ -365,12 +375,18 @@ func getRegionParams(region string, state string) (string, string) {
 
 //Querys college scorecard API for each STR
 func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeParams, c chan []college, ccSearch bool, getAllResults bool) ([]college, error) {
-
+	var err error
 	if len(statesMap) == 0 {
-		statesMap, numToState = getStateCodes()
+		statesMap, numToState, err = getStateCodes()
+		if err != nil {
+			return nil, err
+		}
 	}
 	if len(regionMap) == 0 {
-		regionMap = getStatesByRegion()
+		regionMap, err = getStatesByRegion()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	baseURL, err := url.Parse("https://api.data.gov/ed/collegescorecard/v1/schools?")
@@ -496,7 +512,11 @@ func setUpMajors(majors []string) (map[string]bool, error) {
 //GetMajorParams not using currently since collegescorecard has bugs but hopefully can use in future
 func GetMajorParams(majors []string) ([]string, error) {
 	if len(majorsMap) == 0 {
-		majorsMap = getMajorsByCipCode()
+		var err error
+		majorsMap, err = getMajorsByCipCode()
+		if err != nil {
+			return nil, err
+		}
 	}
 	var codes []string
 	for _, m := range majors {
@@ -565,7 +585,7 @@ func checkAffordability(c college, AbilityToPay int, state string) bool {
 }
 
 //Sorts the three categories STR into a ranked list based on preferences
-func sortColleges(colleges []college, queryParams collegeParams, rank string, schoolsWithMajor map[string]bool, c chan chanResult) ([]college, []int32) {
+func sortColleges(colleges []college, queryParams collegeParams, rank string, schoolsWithMajor map[string]bool, c chan chanResult) ([]college, []int32, error) {
 	//maps "name" to all of the info on that specific college
 	// used to look up college based on name from ranking
 	var collegeDict map[string]college
@@ -574,17 +594,23 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 	//maps "name" to sorted rank
 	var rankColleges map[string]int
 	rankColleges = make(map[string]int)
-
+	var err error
 	//in order to limit firestore queries and time
 	//we save needMet of each private school (get this info from client) in a csv file
 	//Will need to automate process for client to be able to upload a new file every year
 	if len(needMap) == 0 {
-		needMap = getSchoolNeedMet()
+		needMap, err = getSchoolNeedMet()
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	//Maps states to specific code from ScoreCard API
 	if len(statesMap) == 0 {
-		statesMap, numToState = getStateCodes()
+		statesMap, numToState, err = getStateCodes()
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	//major and affordability
@@ -688,7 +714,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 		c <- temp
 		wg.Done()
 	}
-	return finalSort, finalIDs
+	return finalSort, finalIDs, nil
 }
 
 //Gets the percentage of people at a college that are doing the prefered major.
@@ -859,10 +885,10 @@ func oldparseMajors(majors []string, college Result) map[string]float32 {
 	return temp
 }
 
-func getMajorsByCipCode() map[string][]string {
+func getMajorsByCipCode() (map[string][]string, error) {
 	file, err := os.Open("handler/majors.csv")
 	if err != nil {
-
+		return nil, err
 	}
 	csvfile := csv.NewReader(file)
 	var majors map[string][]string
@@ -874,7 +900,7 @@ func getMajorsByCipCode() map[string][]string {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		if _, ok := majors[record[0]]; ok {
 			temp, _ := strconv.Atoi(record[1])
@@ -884,10 +910,10 @@ func getMajorsByCipCode() map[string][]string {
 			majors[record[0]] = []string{strconv.Itoa(temp)}
 		}
 	}
-	return majors
+	return majors, nil
 }
 
-func getSchoolNeedMet() map[string]int {
+func getSchoolNeedMet() (map[string]int, error) {
 	file, err := os.Open("handler/school.csv")
 	if err != nil {
 
@@ -901,19 +927,19 @@ func getSchoolNeedMet() map[string]int {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		schoolName := strings.TrimSpace(record[0])
 		needMet, err := strconv.Atoi(record[1])
 		m[schoolName] = needMet
 	}
-	return m
+	return m, nil
 }
 
-func getStatesByRegion() map[string]int {
+func getStatesByRegion() (map[string]int, error) {
 	file, err := os.Open("handler/region.csv")
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 	m := make(map[string]int)
 	csvfile := csv.NewReader(file)
@@ -924,16 +950,16 @@ func getStatesByRegion() map[string]int {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		state := strings.TrimSpace(record[1])
 		code, err := strconv.Atoi(record[0])
 		m[state] = code
 	}
-	return m
+	return m, nil
 }
 
-func getStateCodes() (map[string]int, map[int]string) {
+func getStateCodes() (map[string]int, map[int]string, error) {
 	file, err := os.Open("handler/stateCodes.csv")
 	if err != nil {
 
@@ -948,14 +974,14 @@ func getStateCodes() (map[string]int, map[int]string) {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			return nil, nil, err
 		}
 		state := strings.TrimSpace(record[1])
 		code, err := strconv.Atoi(record[0])
 		m[state] = code
 		n[code] = state
 	}
-	return m, n
+	return m, n, nil
 }
 
 func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
@@ -988,14 +1014,16 @@ func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 
 	matchesData, err := docsnap.DataAt("results")
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 	var matches SafetyTargetReachIDs
 	mapstructure.Decode(matchesData, &matches)
 
 	majorsData, err := docsnap.DataAt("majors")
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 	var majors []string
 	mapstructure.Decode(majorsData, &majors)

@@ -130,7 +130,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func scoreStudent(UID string) (int, string) {
+func scoreStudent(UID string) (int, string, error) {
 	ctx := context.Background()
 
 	userInfo, err := client.Collection("users").Doc(UID).Get(ctx)
@@ -149,7 +149,7 @@ func scoreStudent(UID string) (int, string) {
 			break
 		}
 		if err != nil {
-			log.Fatalln(err)
+			return 0, "", err
 		}
 		var s selectivity
 		doc.DataTo(&s)
@@ -169,7 +169,7 @@ func scoreStudent(UID string) (int, string) {
 		log.Println("Potential score: ", score)
 		i, err := strconv.Atoi(score[len(score)-1:])
 		if err != nil {
-			log.Fatalln(err)
+			return 0, "", err
 		}
 		if i > topScore {
 			topScore = i
@@ -180,7 +180,7 @@ func scoreStudent(UID string) (int, string) {
 		topScore = 1
 	}
 	log.Println(topScore, topTest)
-	return topScore, topTest
+	return topScore, topTest, nil
 }
 
 type student struct {
