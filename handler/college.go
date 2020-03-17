@@ -502,16 +502,33 @@ func setUpMajors(majors []string) (map[string]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	schoolsWithMajor, err := listCollegesWithMajors(codes)
-	if err != nil {
-		return nil, err
+	var schoolsWithMajor map[string]bool
+	schoolsWithMajor = make(map[string]bool)
+	if len(majors) == 1 {
+		schoolsWithMajor, err = listCollegesWithMajors(codes[majors[0]])
+		if err != nil {
+			return nil, err
+		}
+	} else if len(majors) == 2 {
+		tempA, err := listCollegesWithMajors(codes[majors[0]])
+		if err != nil {
+			return nil, err
+		}
+		tempB, err := listCollegesWithMajors(codes[majors[1]])
+		if err != nil {
+			return nil, err
+		}
+		for school := range tempA {
+			if tempB[school] {
+				schoolsWithMajor[school] = true
+			}
+		}
 	}
 	return schoolsWithMajor, nil
 }
 
 //GetMajorParams not using currently since collegescorecard has bugs but hopefully can use in future
-func GetMajorParams(majors []string) ([]string, error) {
-	log.Println(majors)
+func GetMajorParams(majors []string) (map[string][]string, error) {
 	if len(majorsMap) == 0 {
 		var err error
 		majorsMap, err = getMajorsByCipCode()
@@ -519,9 +536,10 @@ func GetMajorParams(majors []string) ([]string, error) {
 			return nil, err
 		}
 	}
-	var codes []string
+	var codes map[string][]string
+	codes = make(map[string][]string)
 	for _, m := range majors {
-		codes = append(codes, majorsMap[m]...)
+		codes[m] = append(codes[m], majorsMap[m]...)
 	}
 	return codes, nil
 }
