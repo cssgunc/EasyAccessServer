@@ -237,6 +237,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 404)
 		return
 	}
+	log.Println("Results", len(results.Reach)+len(results.Target)+len(results.Safety))
 
 	output, err := json.Marshal(results)
 	if err != nil {
