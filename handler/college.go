@@ -30,13 +30,7 @@ var regionMap map[string]int
 var majorsMap map[string][]string
 
 func (h *Handler) testOtherFunc(w http.ResponseWriter, r *http.Request) {
-	// err := setUpMajors([]string{"Computer & Information Sciences"})
-	// log.Println(schoolsWithMajor)
-	// output, err := json.Marshal(schoolsWithMajor)
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
-	// w.Write(output)
+
 }
 
 //Automate this when CollegeScoreCard updates to allow for querying program_percentage
@@ -107,6 +101,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println(token)
 	//scores the student from 1-5
 	score, test, err := scoreStudent(token.UID)
 
@@ -407,6 +402,9 @@ func queryColleges(selectivityInfo *CollegeSelectivityInfo, queryParams collegeP
 	} else {
 		key, value := getRegionParams(queryParams.Region, queryParams.State)
 		if len(key) != 0 {
+			if key == "distance" {
+				params.Add("zip", queryParams.Zip)
+			}
 			params.Add(key, value)
 		}
 		//sets ranges of possible scores to limit query, Takes lowest and highest of each data point from STR
