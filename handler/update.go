@@ -89,7 +89,7 @@ func (h *Handler) updateMajorInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	for code, schools := range codeMap {
 		code = strings.TrimPrefix(code, "0")
-		log.Println(code)
+
 		_, err = client.Collection("majors").Doc(code).Set(ctx, map[string]interface{}{
 			"schools": schools,
 		})
@@ -213,7 +213,7 @@ func (h *Handler) updateSchoolNeedMet(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		log.Println(schoolName, needMet)
+
 	}
 }
 

@@ -101,7 +101,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(token)
 	//scores the student from 1-5
 	score, test, err := scoreStudent(token.UID)
 
@@ -237,7 +236,6 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 404)
 		return
 	}
-	log.Println("Results", len(results.Reach)+len(results.Target)+len(results.Safety))
 
 	output, err := json.Marshal(results)
 	if err != nil {
@@ -653,6 +651,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 		//Checks if the school exists in the list of schools that has the wanted majors then sorts
 		if hasMajors && canAfford {
 			collegeDict[c.SchoolName] = c
+			rankColleges[c.SchoolName] = 0
 			//Size Preference
 			switch strings.ToLower(queryParams.Size) {
 			case "small":
@@ -846,7 +845,6 @@ func (h *Handler) getPastMatches(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 401)
 		return
 	}
-	log.Println(token)
 	docsnap, err := client.Collection("userMatches").Doc(token.UID).Get(ctx)
 	if !docsnap.Exists() {
 		temp := SafetyTargetReach{
