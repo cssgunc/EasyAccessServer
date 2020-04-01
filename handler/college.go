@@ -718,6 +718,7 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 			if score := locationPreference(queryParams.Location, c.Location); score == 1 {
 				rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 			}
+
 			//Diversity latest.student.demographics.race_ethnicity.white
 			c.Diversity = 1 - c.Diversity
 			switch {
