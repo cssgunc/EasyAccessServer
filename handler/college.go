@@ -28,6 +28,7 @@ var statesMap map[string]int
 var numToState map[int]string
 var regionMap map[string]int
 var majorsMap map[string][]string
+var majorCategories map[string][]string
 
 func (h *Handler) testOtherFunc(w http.ResponseWriter, r *http.Request) {
 
@@ -36,13 +37,13 @@ func (h *Handler) testOtherFunc(w http.ResponseWriter, r *http.Request) {
 //Automate this when CollegeScoreCard updates to allow for querying program_percentage
 //No need for security checks, doesnt access firestore
 func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
-	file, err := os.Open("handler/majors.csv")
+	file, err := os.Open("handler/MajorCategories.csv")
 	if err != nil {
 		log.Println(err.Error())
 	}
 	csvfile := csv.NewReader(file)
-	var majors map[string][]int
-	majors = make(map[string][]int)
+	var majors map[string][]string
+	majors = make(map[string][]string)
 	for {
 		// Read each record from csv
 		record, err := csvfile.Read()
@@ -53,11 +54,9 @@ func (h *Handler) collegeMajors(w http.ResponseWriter, r *http.Request) {
 			log.Println(err.Error())
 		}
 		if _, ok := majors[record[0]]; ok {
-			temp, _ := strconv.Atoi(record[1])
-			majors[record[0]] = append(majors[record[0]], temp)
+			majors[record[0]] = append(majors[record[0]], record[1])
 		} else {
-			temp, _ := strconv.Atoi(record[1])
-			majors[record[0]] = []int{temp}
+			majors[record[0]] = []string{record[1]}
 		}
 	}
 	i := 0
@@ -526,17 +525,28 @@ func setUpMajors(majors []string) (map[string]bool, error) {
 
 //GetMajorParams not using currently since collegescorecard has bugs but hopefully can use in future
 func GetMajorParams(majors []string) (map[string][]string, error) {
+	var err error
 	if len(majorsMap) == 0 {
-		var err error
 		majorsMap, err = getMajorsByCipCode()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(majorCategories) == 0 {
+		majorCategories, err = getMajorCategories()
 		if err != nil {
 			return nil, err
 		}
 	}
 	var codes map[string][]string
 	codes = make(map[string][]string)
-	for _, m := range majors {
+	for _, m := range majorCategories[majors[0]] {
 		codes[m] = append(codes[m], majorsMap[m]...)
+	}
+	if len(majors) == 2 {
+		for _, m := range majorCategories[majors[1]] {
+			codes[m] = append(codes[m], majorsMap[m]...)
+		}
 	}
 	return codes, nil
 }
@@ -600,6 +610,53 @@ func checkAffordability(c college, AbilityToPay int, state string) bool {
 	return false
 }
 
+func sizePreference(sizes []string, collegeSize int) int {
+	for index, v := range sizes {
+		sizes[index] = strings.Trim(strings.ToLower(v), " ")
+	}
+	if collegeSize < 2000 && contains(sizes, "small") {
+		return 1
+	} else if collegeSize > 2000 && collegeSize < 10000 && contains(sizes, "medium") {
+		return 1
+	} else if collegeSize > 10000 && collegeSize < 15000 && contains(sizes, "large") {
+		return 1
+	} else if collegeSize > 15000 && contains(sizes, "xlarge") {
+		return 1
+	}
+	return 0
+}
+
+func locationPreference(locations []int, loc int) int {
+	if loc == 1 && (containsInt(locations, 11) || containsInt(locations, 12) || containsInt(locations, 13)) {
+		return 1
+	}
+	if loc == 2 && (containsInt(locations, 21) || containsInt(locations, 22) || containsInt(locations, 23)) {
+		return 1
+	}
+	if loc == 3 && (containsInt(locations, 31) || containsInt(locations, 32) || containsInt(locations, 33) || containsInt(locations, 41) || containsInt(locations, 42) || containsInt(locations, 43)) {
+		return 1
+	}
+	return 0
+}
+
+func contains(arr []string, str string) bool {
+	for _, a := range arr {
+		if a == str {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInt(arr []int, val int) bool {
+	for _, a := range arr {
+		if a == val {
+			return true
+		}
+	}
+	return false
+}
+
 //Sorts the three categories STR into a ranked list based on preferences
 func sortColleges(colleges []college, queryParams collegeParams, rank string, schoolsWithMajor map[string]bool, c chan chanResult) ([]college, []int32, error) {
 	//maps "name" to all of the info on that specific college
@@ -653,41 +710,14 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 			collegeDict[c.SchoolName] = c
 			rankColleges[c.SchoolName] = 0
 			//Size Preference
-			switch strings.ToLower(queryParams.Size) {
-			case "small":
-				if c.Size < 2000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case "medium":
-				if c.Size > 2000 && c.Size < 10000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case "large":
-				if c.Size > 10000 && c.Size < 15000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case "xlarge":
-				if c.Size > 15000 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
+			if score := sizePreference(queryParams.Size, c.Size); score == 1 {
+				rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 			}
 
 			//Location Preference
-			switch c.Location {
-			case 11, 12, 13:
-				if queryParams.Location == 1 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case 21, 22, 23:
-				if queryParams.Location == 2 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case 31, 32, 33, 41, 42, 43:
-				if queryParams.Location == 3 {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
+			if score := locationPreference(queryParams.Location, c.Location); score == 1 {
+				rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 			}
-
 			//Diversity latest.student.demographics.race_ethnicity.white
 			c.Diversity = 1 - c.Diversity
 			switch {
@@ -737,6 +767,32 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 	return finalSort, finalIDs, nil
 }
 
+func getMajorCategories() (map[string][]string, error) {
+	file, err := os.Open("handler/MajorCategories.csv")
+	if err != nil {
+		return nil, err
+	}
+	csvfile := csv.NewReader(file)
+	var majors map[string][]string
+	majors = make(map[string][]string)
+	for {
+		// Read each record from csv
+		record, err := csvfile.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := majors[record[0]]; ok {
+			majors[record[0]] = append(majors[record[0]], record[1])
+		} else {
+			majors[record[0]] = []string{record[1]}
+		}
+	}
+	return majors, nil
+}
+
 func getMajorsByCipCode() (map[string][]string, error) {
 	file, err := os.Open("handler/majors.csv")
 	if err != nil {
@@ -755,11 +811,9 @@ func getMajorsByCipCode() (map[string][]string, error) {
 			return nil, err
 		}
 		if _, ok := majors[record[0]]; ok {
-			temp, _ := strconv.Atoi(record[1])
-			majors[record[0]] = append(majors[record[0]], strconv.Itoa(temp))
+			majors[record[0]] = append(majors[record[0]], record[1])
 		} else {
-			temp, _ := strconv.Atoi(record[1])
-			majors[record[0]] = []string{strconv.Itoa(temp)}
+			majors[record[0]] = []string{record[1]}
 		}
 	}
 	return majors, nil
@@ -1138,8 +1192,8 @@ type collegeParams struct {
 	Region        string
 	Majors        []string
 	AbilityToPay  int
-	Size          string
-	Location      int
+	Size          []string
+	Location      []int
 	Diversity     string
 	Zip           string
 }
