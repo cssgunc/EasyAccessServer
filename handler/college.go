@@ -353,16 +353,24 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 	return info, nil
 }
 
-func getRegionParams(region string, state string) (string, string) {
-	switch strings.Trim(strings.ToLower(region), " ") {
+func getRegionParams(region []string, state string) (string, string) {
+	switch strings.Trim(strings.ToLower(region[0]), " ") {
 	case "home":
 		return "distance", "25mi"
 	case "state":
 		return "school.state_fips", strconv.Itoa(statesMap[state])
-	case "region":
-		return "school.region_id", strconv.Itoa(regionMap[state])
-	default:
+	case "national":
 		return "", ""
+	default:
+		var regionString = ""
+		for _, v := range region {
+			if regionString == "" {
+				regionString = v
+			} else {
+				regionString = regionString + "," + v
+			}
+		}
+		return "school.region_id", regionString
 	}
 }
 
@@ -1190,7 +1198,7 @@ type collegeParams struct {
 	UnweightedGPA float32
 	ACT           int
 	SAT           int
-	Region        string
+	Region        []string
 	Majors        []string
 	AbilityToPay  int
 	Size          []string
