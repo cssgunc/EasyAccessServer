@@ -731,11 +731,11 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 			c.Diversity = 1 - c.Diversity
 			switch {
 			case c.Diversity >= 0.20:
-				if queryParams.Diversity == "some" {
+				if queryParams.Diversity[0] == "some" {
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			case c.Diversity > 0.30:
-				if queryParams.Diversity == "more" {
+				if queryParams.Diversity[0] == "more" {
 					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 				}
 			}
@@ -1203,7 +1203,7 @@ type collegeParams struct {
 	AbilityToPay  int
 	Size          []string
 	Location      []int
-	Diversity     string
+	Diversity     []string
 	Zip           string
 }
 
