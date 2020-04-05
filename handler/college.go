@@ -510,12 +510,10 @@ func setUpMajors(majors []string) (map[string]bool, error) {
 	var schoolsWithMajor map[string]bool
 	schoolsWithMajor = make(map[string]bool)
 	if len(majors) == 1 {
-		log.Println("a")
 		schoolsWithMajor, err = listCollegesWithMajors(codes[majors[0]])
 		if err != nil {
 			return nil, err
 		}
-		log.Println("b")
 	} else if len(majors) == 2 {
 		tempA, err := listCollegesWithMajors(codes[majors[0]])
 		if err != nil {
@@ -651,6 +649,17 @@ func locationPreference(locations []int, loc int) int {
 	return 0
 }
 
+func diversityPreference(diversities []string, d float32) int {
+	d = 1 - d
+	if d >= 0.20 && contains(diversities, "some") {
+		return 1
+	}
+	if d > 0.30 && contains(diversities, "more") {
+		return 1
+	}
+	return 0
+}
+
 func contains(arr []string, str string) bool {
 	for _, a := range arr {
 		if a == str {
@@ -732,16 +741,8 @@ func sortColleges(colleges []college, queryParams collegeParams, rank string, sc
 			}
 
 			//Diversity latest.student.demographics.race_ethnicity.white
-			c.Diversity = 1 - c.Diversity
-			switch {
-			case c.Diversity >= 0.20:
-				if queryParams.Diversity[0] == "some" {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
-			case c.Diversity > 0.30:
-				if queryParams.Diversity[0] == "more" {
-					rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
-				}
+			if score := diversityPreference(queryParams.Diversity, c.Diversity); score == 1 {
+				rankColleges[c.SchoolName] = rankColleges[c.SchoolName] + 1
 			}
 		}
 	}
@@ -798,7 +799,7 @@ func getMajorCategories() (map[string][]string, error) {
 			return nil, err
 		}
 		if _, ok := majors[record[0]]; ok {
-			if !Contains(majors[record[0]], record[1]) {
+			if !contains(majors[record[0]], record[1]) {
 				majors[record[0]] = append(majors[record[0]], record[1])
 			}
 		} else {
@@ -806,16 +807,6 @@ func getMajorCategories() (map[string][]string, error) {
 		}
 	}
 	return majors, nil
-}
-
-//Contains checks if an array contains an element
-func Contains(array []string, value string) bool {
-	for _, v := range array {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }
 
 func getMajorsByCipCode() (map[string][]string, error) {
