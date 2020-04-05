@@ -166,7 +166,6 @@ func scoreStudent(UID string) (int, string, error) {
 	topScore := 0
 	topTest := ""
 	for _, score := range potentialScores {
-		log.Println("Potential score: ", score)
 		i, err := strconv.Atoi(score[len(score)-1:])
 		if err != nil {
 			return 0, "", err
@@ -179,7 +178,6 @@ func scoreStudent(UID string) (int, string, error) {
 	if topScore == 0 {
 		topScore = 1
 	}
-	log.Println(topScore, topTest)
 	return topScore, topTest, nil
 }
 

@@ -506,13 +506,16 @@ func setUpMajors(majors []string) (map[string]bool, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var schoolsWithMajor map[string]bool
 	schoolsWithMajor = make(map[string]bool)
 	if len(majors) == 1 {
+		log.Println("a")
 		schoolsWithMajor, err = listCollegesWithMajors(codes[majors[0]])
 		if err != nil {
 			return nil, err
 		}
+		log.Println("b")
 	} else if len(majors) == 2 {
 		tempA, err := listCollegesWithMajors(codes[majors[0]])
 		if err != nil {
@@ -546,6 +549,7 @@ func GetMajorParams(majors []string) (map[string][]string, error) {
 			return nil, err
 		}
 	}
+
 	var codes map[string][]string
 	codes = make(map[string][]string)
 	for _, m := range majorCategories[majors[0]] {
@@ -794,12 +798,24 @@ func getMajorCategories() (map[string][]string, error) {
 			return nil, err
 		}
 		if _, ok := majors[record[0]]; ok {
-			majors[record[0]] = append(majors[record[0]], record[1])
+			if !Contains(majors[record[0]], record[1]) {
+				majors[record[0]] = append(majors[record[0]], record[1])
+			}
 		} else {
 			majors[record[0]] = []string{record[1]}
 		}
 	}
 	return majors, nil
+}
+
+//Contains checks if an array contains an element
+func Contains(array []string, value string) bool {
+	for _, v := range array {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
 
 func getMajorsByCipCode() (map[string][]string, error) {
