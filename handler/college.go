@@ -354,6 +354,9 @@ func getCollegeRanges(score int) ([][]CollegeSelectivityInfo, error) {
 }
 
 func getRegionParams(region []string, state string) (string, string) {
+	if len(region) == 0 {
+		return "", ""
+	}
 	switch strings.Trim(strings.ToLower(region[0]), " ") {
 	case "home":
 		return "distance", "25mi"
