@@ -149,6 +149,14 @@
   version = "v1.0.2"
 
 [[projects]]
+  digest = "1:6ea2d98ba8ae7c06a918970661b744be5d1a385c40917b9c317e9a4f2c36ac6f"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "694aaefbc689be1915c2ef39e880409057931a94"
+  version = "v1.2.2"
+
+[[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
   name = "github.com/pkg/errors"
   packages = ["."]
@@ -478,11 +486,13 @@
   input-imports = [
     "cloud.google.com/go/firestore",
     "firebase.google.com/go",
+    "firebase.google.com/go/auth",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
     "github.com/go-chi/cors",
     "github.com/go-chi/render",
     "github.com/joho/godotenv",
+    "github.com/mitchellh/mapstructure",
     "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
