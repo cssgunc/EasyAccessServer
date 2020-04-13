@@ -116,6 +116,7 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	newInfo.UID = token.UID
 
 	userRef := client.Collection("users").Doc(token.UID)
 	_, err = userRef.Update(ctx, newInfo.Info)
@@ -182,7 +183,6 @@ func scoreStudent(UID string) (int, string, error) {
 }
 
 type student struct {
-	UID           string  `json:"uid"`
 	FirstName     string  `json:"firstname"`
 	LastName      string  `json:"lastname"`
 	Email         string  `json:"email"`

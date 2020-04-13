@@ -99,6 +99,7 @@ func (h *Handler) getMatches(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	log.Println(queryParams)
 
 	//scores the student from 1-5
 	score, test, err := scoreStudent(token.UID)
@@ -364,6 +365,8 @@ func getRegionParams(region []string, state string) (string, string) {
 		return "school.state_fips", strconv.Itoa(statesMap[state])
 	case "national":
 		return "", ""
+	case "region":
+		return "school.region_id", strconv.Itoa(regionMap[state])
 	default:
 		var regionString = ""
 		for _, v := range region {
