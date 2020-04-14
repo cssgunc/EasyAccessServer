@@ -149,6 +149,14 @@
   version = "v1.0.2"
 
 [[projects]]
+  digest = "1:6ea2d98ba8ae7c06a918970661b744be5d1a385c40917b9c317e9a4f2c36ac6f"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "694aaefbc689be1915c2ef39e880409057931a94"
+  version = "v1.2.2"
+
+[[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
   name = "github.com/pkg/errors"
   packages = ["."]
@@ -179,6 +187,14 @@
   pruneopts = "UT"
   revision = "221dbe5ed46703ee255b1da0dec05086f5035f62"
   version = "v1.4.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:e2c7373e0e0fa5af46b3f346e7ff2803908df44266a4c286ab953f83a598ba31"
+  name = "github.com/unc-cs-sg/EasyAccessServer"
+  packages = ["handler"]
+  pruneopts = "UT"
+  revision = "a51b1047643226ef2b28a58d74fc3b618dccb378"
 
 [[projects]]
   digest = "1:07ca513e3b295b9aeb1f0f6fbefb8102139a2764ce0f28d02040c0eb2dc276dd"
@@ -478,14 +494,17 @@
   input-imports = [
     "cloud.google.com/go/firestore",
     "firebase.google.com/go",
+    "firebase.google.com/go/auth",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
     "github.com/go-chi/cors",
     "github.com/go-chi/render",
     "github.com/joho/godotenv",
+    "github.com/mitchellh/mapstructure",
     "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
+    "github.com/unc-cs-sg/EasyAccessServer/handler",
     "google.golang.org/api/iterator",
   ]
   solver-name = "gps-cdcl"
