@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/BaileyFrederick/EasyAccessServer/handler"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/unc-cs-sg/EasyAccessServer/handler"
 )
 
 var log *logrus.Logger
